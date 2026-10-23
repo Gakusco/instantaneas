@@ -15,7 +15,7 @@
   #miniBar button{padding:3px 10px;font-size:12px}
   #exportMini{display:none}
   #topbars.collapsed #exportMini{display:inline-block}
-  #topbars.collapsed header,#topbars.collapsed #capbarWrap{display:none!important}
+  #topbars.collapsed header,#topbars.collapsed #capbarWrap,#topbars.collapsed #stkbar{display:none!important}
   header h1{font-size:16px;margin:0 auto 0 0}
   .info{color:var(--muted);font-size:13px}
   button,label.btn,select,input[type=number]{background:#3a3c42;color:var(--text);border:1px solid var(--line);padding:8px 12px;border-radius:6px;font:inherit}
@@ -55,6 +55,22 @@
   .cardtools .presetmenu .pm{width:9mm;height:9mm;border-radius:1mm;background-size:cover;background-position:center;padding:0}
   .hint{color:var(--muted);font-size:12px;padding:0 16px 14px;text-align:center}
   .drop{outline:3px dashed var(--accent);outline-offset:-6px}
+  #help{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+  #help.open{display:flex}
+  #help .box{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 24px;max-width:640px;max-height:90vh;overflow:auto}
+  #help h2{margin:0 0 10px;font-size:18px} #help h3{margin:16px 0 6px;font-size:15px}
+  #help ol{padding-left:20px;margin:0} #help li{margin-bottom:6px}
+  #help .x{position:absolute;top:8px;right:8px;padding:2px 10px;font-size:18px}
+  #help td{padding:3px 12px 3px 0} kbd{background:#3a3c42;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:12px monospace}
+  #stkList{display:flex;gap:6px;overflow-x:auto;padding:2px}
+  #stkbar{display:flex;gap:8px;align-items:center;background:var(--panel);padding:6px 16px;border-bottom:1px solid var(--line)}
+  #stkbar .st{flex:none;width:40px;height:40px;padding:3px;cursor:grab;background:#3a3c42;border:1px solid var(--line);border-radius:6px}
+  #stkbar .st img{width:100%;height:100%;display:block;pointer-events:none}
+  .stk{position:absolute;z-index:6;cursor:grab;touch-action:none;user-select:none}
+  .stk img{width:100%;height:100%;display:block;pointer-events:none;filter:drop-shadow(0 .3mm .5mm #0005)}
+  .stk .sx{display:none;position:absolute;top:-2mm;right:-2mm;width:5mm;height:5mm;padding:0;border-radius:50%;border:0;background:#000b;color:#fff;font-size:3.4mm;line-height:1;cursor:pointer}
+  .stk:hover .sx{display:block}
+  .stk:hover{outline:.3mm dashed var(--accent)}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -77,14 +93,16 @@
   <label class="opt">Fondo <input type="color" id="allColor" value="#ffffff"></label>
   <button id="applyAll" title="Aplica este color a todos los marcos (quita las imágenes de fondo)">Color a todas</button>
   <button id="applyAllImg" title="Usa la misma imagen de fondo en todos los marcos">Imagen a todas</button>
-  <select id="presetAll" title="Aplica un fondo predefinido a todos los marcos"><option value="">Fondos predefinidos…</option><option value="sunset">Atardecer</option><option value="paper">Cuaderno</option><option value="night">Noche estrellada</option></select>
+  <select id="presetAll" title="Aplica un fondo predefinido a todos los marcos"><option value="">Fondos predefinidos…</option><option value="sunset">Atardecer</option><option value="paper">Cuaderno</option><option value="night">Noche estrellada</option><option value="ocean">Océano</option><option value="forest">Bosque</option><option value="aurora">Aurora boreal</option><option value="candy">Caramelo</option><option value="sakura">Sakura</option><option value="desert">Desierto</option><option value="galaxy">Galaxia</option><option value="mint">Menta</option><option value="lava">Lava</option><option value="geo">Geométrico</option></select>
   <label class="opt"><input type="checkbox" id="frameless"> Sin marco</label>
   <label class="opt">Sangrado <input type="number" id="bleed" value="1" min="0" max="5" step=".5"> mm</label>
   <label class="opt">Separación <input type="number" id="gap" value="4" min="0" max="20" step=".5"> mm</label>
   <span class="info" id="layoutInfo"></span>
   <span class="info" id="count"></span>
+  <label class="btn" title="Pone la misma foto en todas las tarjetas (F)">Foto en todas<input type="file" id="allPhoto" accept="image/*" hidden></label>
   <label class="btn">Agregar fotos<input type="file" id="multi" accept="image/*" multiple hidden></label>
   <button id="clear">Vaciar</button>
+  <button id="helpBtn" title="Ayuda y atajos (F1 o ?)">¿Necesitas ayuda?</button>
   <button class="primary" id="export">Descargar PDF</button>
   <div id="custom">
     <span class="info">Tarjeta (mm):</span>
@@ -118,6 +136,7 @@
   <span class="info">Escribe el texto de cada foto directamente en su marco.</span>
 </div>
 </div>
+<div id="stkbar"><span class="info">Stickers:</span><select id="stkCat" title="Categoría"></select><span id="stkList"></span><span class="info">Arrastra a la hoja · rueda = tamaño</span><button id="stkClear">Quitar stickers</button></div>
 <div id="miniBar">
   <button id="toggleTools" title="Ocultar o mostrar las barras de herramientas">▲ Ocultar herramientas</button>
   <button id="exportMini" class="primary">Descargar PDF</button>
@@ -151,6 +170,7 @@ let photoEls = [], cardEls = [], replaceIdx = null, bgIdx = null;
 const bgs = Array.from({length: MAXN}, () => ({color: '#ffffff', img: null, url: null})); // fondo por tarjeta
 // Fondos predefinidos: se dibujan en canvas, no usan archivos externos
 function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function vgrad(x, S, stops) { const g = x.createLinearGradient(0, 0, 0, S); stops.forEach(([o, c]) => g.addColorStop(o, c)); x.fillStyle = g; x.fillRect(0, 0, S, S); }
 const PRESETS = {
   sunset: {name: 'Atardecer', draw(x, S) {
     const g = x.createLinearGradient(0, 0, 0, S);
@@ -194,6 +214,66 @@ const PRESETS = {
     mg.addColorStop(0, 'rgba(255,246,214,.55)'); mg.addColorStop(1, 'rgba(255,246,214,0)');
     x.fillStyle = mg; x.fillRect(0, 0, S, S);
     x.fillStyle = '#fff6d6'; x.beginPath(); x.arc(S*.66, S*.26, S*.07, 0, 7); x.fill();
+  }},
+  ocean: {name: 'Océano', draw(x, S) {
+    vgrad(x, S, [[0,'#bfefff'],[.4,'#2aa6d8'],[1,'#07335e']]);
+    x.strokeStyle = 'rgba(255,255,255,.22)'; x.lineWidth = 3;
+    for (let r = 0; r < 14; r++) { x.beginPath(); for (let k = 0; k <= S; k += 20) { const y = S*(.3 + r*.05) + Math.sin(k/S*12 + r) * 14; k ? x.lineTo(k, y) : x.moveTo(k, y); } x.stroke(); }
+  }},
+  forest: {name: 'Bosque', draw(x, S) {
+    vgrad(x, S, [[0,'#e8f7c8'],[.5,'#6fb36a'],[1,'#133d2a']]);
+    const r = rng(5);
+    for (let k = 0; k < 26; k++) { const px = r()*S, h = S*(.25 + r()*.35), w = h*.28, py = S*(.55 + r()*.45);
+      x.fillStyle = `rgba(${10+r()*20|0},${50+r()*50|0},${30+r()*30|0},.8)`; x.beginPath(); x.moveTo(px, py-h); x.lineTo(px+w, py); x.lineTo(px-w, py); x.fill(); }
+  }},
+  aurora: {name: 'Aurora boreal', draw(x, S) {
+    vgrad(x, S, [[0,'#04091f'],[1,'#0b2a3d']]);
+    ['rgba(80,255,180,.35)','rgba(120,140,255,.3)','rgba(200,100,255,.25)'].forEach((c, n) => {
+      const g = x.createLinearGradient(0, S*.1, 0, S*.7); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(.5, c); g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = g; x.beginPath(); x.moveTo(0, S*.4);
+      for (let k = 0; k <= S; k += 20) x.lineTo(k, S*(.35 + n*.07) + Math.sin(k/S*6 + n*2) * S*.08);
+      x.lineTo(S, S*.9); x.lineTo(0, S*.9); x.fill(); });
+    const r = rng(9); x.fillStyle = '#fff'; for (let k = 0; k < 120; k++) x.fillRect(r()*S, r()*S*.6, 2, 2);
+  }},
+  candy: {name: 'Caramelo', draw(x, S) {
+    x.fillStyle = '#ffd1e8'; x.fillRect(0, 0, S, S);
+    x.fillStyle = '#fff'; for (let k = -S; k < S*2; k += 160) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k+80, 0); x.lineTo(k+80-S, S); x.lineTo(k-S, S); x.fill(); }
+    x.fillStyle = 'rgba(255,120,180,.35)'; for (let k = 0; k < 8; k++) for (let j = 0; j < 8; j++) { x.beginPath(); x.arc(75 + k*150 + (j%2)*75, 75 + j*150, 14, 0, 7); x.fill(); }
+  }},
+  sakura: {name: 'Sakura', draw(x, S) {
+    vgrad(x, S, [[0,'#fff0f5'],[1,'#f9c0d4']]);
+    const r = rng(11);
+    for (let k = 0; k < 70; k++) { x.save(); x.translate(r()*S, r()*S); x.rotate(r()*6.3); x.fillStyle = `rgba(255,${130+r()*60|0},${170+r()*50|0},${.5+r()*.4})`;
+      x.beginPath(); x.ellipse(0, 0, 10+r()*14, 6+r()*8, 0, 0, 7); x.fill(); x.restore(); }
+  }},
+  desert: {name: 'Desierto', draw(x, S) {
+    vgrad(x, S, [[0,'#ffe9b8'],[.55,'#f6a860'],[1,'#a24a2a']]);
+    x.fillStyle = '#fff3c9'; x.beginPath(); x.arc(S*.3, S*.28, S*.08, 0, 7); x.fill();
+    [['#d9803f',.7],['#b9602f',.8],['#8c4426',.9]].forEach(([c, y], n) => { x.fillStyle = c; x.beginPath(); x.moveTo(0, S*y);
+      x.bezierCurveTo(S*.3, S*(y-.14+n*.03), S*.55, S*(y+.06), S, S*(y-.08)); x.lineTo(S, S); x.lineTo(0, S); x.fill(); });
+  }},
+  galaxy: {name: 'Galaxia', draw(x, S) {
+    x.fillStyle = '#05010f'; x.fillRect(0, 0, S, S);
+    [[.3,.35,'rgba(160,60,255,.5)'],[.7,.6,'rgba(40,120,255,.45)'],[.5,.5,'rgba(255,80,160,.3)']].forEach(([a, b, c]) => {
+      const g = x.createRadialGradient(S*a, S*b, 0, S*a, S*b, S*.5); g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, S, S); });
+    const r = rng(77); for (let k = 0; k < 450; k++) { x.fillStyle = `rgba(255,255,255,${.3 + r()*.7})`; x.beginPath(); x.arc(r()*S, r()*S, .4 + r()*1.8, 0, 7); x.fill(); }
+  }},
+  mint: {name: 'Menta', draw(x, S) {
+    vgrad(x, S, [[0,'#e6fff6'],[1,'#8fe0c4']]);
+    x.strokeStyle = 'rgba(255,255,255,.6)'; x.lineWidth = 6;
+    for (let k = 0; k < 9; k++) for (let j = 0; j < 9; j++) { x.beginPath(); x.arc(k*150 + (j%2)*75, j*150, 55, 0, Math.PI); x.stroke(); }
+  }},
+  lava: {name: 'Lava', draw(x, S) {
+    vgrad(x, S, [[0,'#2b0a05'],[.6,'#b3260a'],[1,'#ffb02e']]);
+    const r = rng(3);
+    for (let k = 0; k < 18; k++) { const px = r()*S, py = r()*S, rr = 30 + r()*90, g = x.createRadialGradient(px, py, 0, px, py, rr);
+      g.addColorStop(0, 'rgba(255,220,90,.8)'); g.addColorStop(1, 'rgba(255,90,20,0)'); x.fillStyle = g; x.fillRect(px-rr, py-rr, rr*2, rr*2); }
+  }},
+  geo: {name: 'Geométrico', draw(x, S) {
+    x.fillStyle = '#16213e'; x.fillRect(0, 0, S, S);
+    const cols = ['#0f3460','#e94560','#f5c542','#53a8b6'], r = rng(21), T = 150;
+    for (let a = 0; a < S; a += T) for (let b = 0; b < S; b += T) { x.fillStyle = cols[r()*4|0]; x.beginPath();
+      if (r() < .5) { x.moveTo(a, b); x.lineTo(a+T, b); x.lineTo(a, b+T); } else { x.moveTo(a+T, b); x.lineTo(a+T, b+T); x.lineTo(a, b+T); } x.fill(); }
   }}
 };
 const presetCache = {};
@@ -352,7 +432,7 @@ function rebuild() {
     tl.append(ci, ib, pb, rb, pm); c.appendChild(tl); c._ci = ci;
     sheet.appendChild(c); photoEls.push(p); cardEls.push(c); applyBg(i);
   }
-  render(); fit();
+  renderStickers(); render(); fit();
 }
 
 function render() {
@@ -528,6 +608,11 @@ $('export').addEventListener('click', async () => {
     cv.getContext('2d').drawImage(s.img, (iw - sw) * s.fx, (ih - sh) * s.fy, sw, sh, 0, 0, W, H);
     doc.addImage(cv.toDataURL('image/jpeg', .93), 'JPEG', x + G.px, y + G.py, G.pw, G.ph);
   }
+  for (const st of stickers) {
+    const c = document.createElement('canvas'); c.width = c.height = 400;
+    c.getContext('2d').drawImage(STICKERS[st.k].img, 0, 0, 400, 400);
+    doc.addImage(c.toDataURL('image/png'), 'PNG', st.x, st.y, st.s, st.s);
+  }
   if (guides && G.fl) { // marcas de corte en el margen, fuera del sangrado
     doc.setDrawColor(90); doc.setLineWidth(.15);
     const gt = G.my - G.b, gb = G.my + G.rows * G.ch + (G.rows - 1) * G.g + G.b;
@@ -540,6 +625,184 @@ $('export').addEventListener('click', async () => {
     }
   }
   doc.save(`fotos-${$('tpl').value}-${$('paper').value}.pdf`);
+});
+
+$('allPhoto').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const s = await loadFile(f); if (!s) return;
+  for (let i = 0; i < G.n; i++) {
+    if (slots[i]) URL.revokeObjectURL(slots[i].url);
+    slots[i] = {img: s.img, url: i ? URL.createObjectURL(f) : s.url, fx: .5, fy: .5};
+  }
+  render();
+});
+
+// Stickers: SVG cuadrados (viewBox 100) agrupados por categoría, se posicionan en mm sobre la hoja
+const O = (w = 6) => ` stroke="#fff" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" paint-order="stroke"`;
+const two = (S, f, w = 12) => `<g fill="#fff" stroke="#fff" stroke-width="${w}" stroke-linejoin="round">${S}</g><g fill="${f}">${S}</g>`;
+const HP = 'M50 90C20 66 6 50 6 32 6 19 16 10 28 10c9 0 17 5 22 13 5-8 13-13 22-13 12 0 22 9 22 22 0 18-14 34-44 58z';
+const heart = (x, y, s, f) => `<path transform="translate(${x} ${y}) scale(${s})" d="${HP}" fill="${f}"${O(6 / s)}/>`;
+const INK = '#3a2a1a';
+const eyes = (y = 44, dx = 13) => `<circle cx="${50 - dx}" cy="${y}" r="3.8" fill="${INK}"/><circle cx="${50 + dx}" cy="${y}" r="3.8" fill="${INK}"/>`;
+const smile = (y = 58, w = 12) => `<path d="M${50 - w} ${y}q${w} ${w * .9} ${w * 2} 0" fill="none" stroke="${INK}" stroke-width="3.6" stroke-linecap="round"/>`;
+const face = x => `<circle cx="50" cy="50" r="40" fill="#ffd84a"${O()}/>` + x;
+const cheeks = (y = 56) => `<circle cx="28" cy="${y}" r="5" fill="#ff7a7a" fill-opacity=".5"/><circle cx="72" cy="${y}" r="5" fill="#ff7a7a" fill-opacity=".5"/>`;
+const rot = (n, f) => [...Array(n)].map((_, i) => f(i * 360 / n)).join('');
+const L = (d, c, w) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const LL = (d, c, w) => L(d, '#fff', w + 8) + L(d, c, w);   // línea con contorno blanco
+
+const LIST = [
+  // ---- Amor
+  ['Amor', 'heart', 'Corazón', `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7aa8"/><stop offset="1" stop-color="#e0193f"/></linearGradient></defs><path d="${HP}" fill="url(#g)"${O(7)}/><path d="M22 30c0-6 4-10 10-10" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="5" stroke-linecap="round"/>`],
+  ['Amor', 'hearts2', 'Dos corazones', heart(0, 22, .62, '#ff7aa8') + heart(38, 34, .6, '#e0193f') + heart(30, 0, .3, '#ffb3cc')],
+  ['Amor', 'cupid', 'Flecha de Cupido', heart(6, 4, .88, '#ff4d79') + LL('M10 90L90 10', '#7a4a2a', 5) + '<path d="M94 6L77 9l14 14z" fill="#555"/>' + rot(2, a => `<path transform="translate(${a ? 8 : 0} ${a ? -8 : 0})" d="M10 90l-2-14 8 6z" fill="#fff" stroke="#bbb" stroke-width="1.5"/>`)],
+  ['Amor', 'letter', 'Carta de amor', `<rect x="10" y="24" width="80" height="56" rx="7" fill="#fff3d6"${O()}/>` + L('M12 28L50 58L88 28', '#e0a96b', 4) + heart(40, 48, .2, '#e0193f')],
+  ['Amor', 'rose', 'Rosa', LL('M50 54V94', '#3c8a3a', 6) + two('<ellipse cx="68" cy="80" rx="13" ry="6" transform="rotate(-30 68 80)"/>', '#4caf50', 8) + `<circle cx="50" cy="36" r="28" fill="#e0193f"${O()}/><circle cx="50" cy="36" r="19" fill="#c70f35"/><circle cx="50" cy="36" r="10" fill="#e0193f"/>` + L('M38 28q12-8 24 2', '#ff8095', 3)],
+  ['Amor', 'kiss', 'Beso', `<path d="M10 50Q30 28 50 40Q70 28 90 50Q70 80 50 80Q30 80 10 50Z" fill="#e8174f"${O()}/>` + L('M13 50Q50 62 87 50', '#9c0e35', 3) + L('M36 46q6-6 14 0', '#ff8aa8', 3)],
+  ['Amor', 'ring', 'Anillo', LL('M26 66a24 24 0 1 0 48 0a24 24 0 1 0-48 0', '#ffc928', 9) + `<polygon points="50,6 69,22 50,48 31,22" fill="#7fd8ff"${O()}/>` + L('M31 22h38M50 6l-9 16 9 26 9-26z', '#fff', 2)],
+  ['Amor', 'padlock', 'Candado', LL('M32 46V34a18 18 0 0 1 36 0v12', '#9aa3ad', 9) + `<rect x="22" y="44" width="56" height="44" rx="9" fill="#ffc928"${O()}/>` + heart(40, 52, .22, '#e0193f')],
+  ['Amor', 'wings', 'Corazón con alas', rot(2, a => `<g transform="${a ? 'translate(100 0) scale(-1 1)' : ''}"><ellipse cx="14" cy="38" rx="18" ry="9" transform="rotate(-28 14 38)" fill="#fff" stroke="#b8cbe0" stroke-width="2"/><ellipse cx="16" cy="52" rx="15" ry="7" transform="rotate(-8 16 52)" fill="#fff" stroke="#b8cbe0" stroke-width="2"/></g>`) + heart(19, 18, .62, '#ff4d79')],
+  ['Amor', 'bubble', 'Mensaje de amor', `<path d="M18 12h64a10 10 0 0 1 10 10v38a10 10 0 0 1-10 10H54L36 90V70H18A10 10 0 0 1 8 60V22a10 10 0 0 1 10-10z" fill="#ff8fb8"${O()}/>` + heart(32, 24, .36, '#fff')],
+  // ---- Naturaleza
+  ['Naturaleza', 'sun', 'Sol', rot(8, a => `<path transform="rotate(${a} 50 50)" d="M50 8v12" stroke="#fff" stroke-width="14" stroke-linecap="round"/>`) + rot(8, a => `<path transform="rotate(${a} 50 50)" d="M50 8v12" stroke="#ffb02e" stroke-width="6" stroke-linecap="round"/>`) + `<circle cx="50" cy="50" r="26" fill="#ffd23f"${O()}/>` + eyes(46, 9) + smile(55, 8) + cheeks(55).replace(/cx="28"/, 'cx="33"').replace(/cx="72"/, 'cx="67"')],
+  ['Naturaleza', 'moon', 'Luna', `<path d="M64 8A44 44 0 1 0 92 66A34 34 0 0 1 64 8z" fill="#ffe58a"${O()}/>` + `<circle cx="38" cy="58" r="6" fill="#f3cf6a"/><circle cx="52" cy="76" r="4" fill="#f3cf6a"/>` + `<path transform="translate(72 22) scale(.18)" d="M50 7l13 28 31 4-23 21 6 31-27-15-27 15 6-31L6 39l31-4z" fill="#fff3a0"${O(10)}/>`],
+  ['Naturaleza', 'cloud', 'Nube', two('<circle cx="32" cy="58" r="18"/><circle cx="54" cy="44" r="22"/><circle cx="74" cy="60" r="16"/><rect x="22" y="58" width="60" height="18" rx="9"/>', '#dbe9ff') + eyes(58, 10) + smile(64, 6)],
+  ['Naturaleza', 'rainbow', 'Arcoíris', L('M22 76A28 28 0 0 1 78 76', '#fff', 40) + ['#ff5a5a', '#ffc23f', '#5ad17a', '#5aa9ff'].map((c, i) => L(`M${50 - (40 - i * 8)} 76A${40 - i * 8} ${40 - i * 8} 0 0 1 ${50 + (40 - i * 8)} 76`, c, 8)).join('') + '<circle cx="9" cy="80" r="9" fill="#fff" stroke="#cfdcec" stroke-width="1.5"/><circle cx="91" cy="80" r="9" fill="#fff" stroke="#cfdcec" stroke-width="1.5"/><circle cx="20" cy="84" r="8" fill="#fff" stroke="#cfdcec" stroke-width="1.5"/><circle cx="80" cy="84" r="8" fill="#fff" stroke="#cfdcec" stroke-width="1.5"/>'],
+  ['Naturaleza', 'flower', 'Flor', two(rot(6, a => `<ellipse cx="50" cy="26" rx="12" ry="19" transform="rotate(${a} 50 50)"/>`), '#ff8fc1') + `<circle cx="50" cy="50" r="13" fill="#ffd23f"${O(4)}/>` + '<circle cx="46" cy="47" r="3" fill="#fff" fill-opacity=".6"/>'],
+  ['Naturaleza', 'clover', 'Trébol', LL('M50 52Q52 76 66 92', '#2f7d32', 5) + rot(4, a => `<g transform="rotate(${a} 50 50)"><path transform="translate(33 21) scale(.34)" d="${HP}" fill="#43b05c"${O(6 / .34)}/></g>`)],
+  ['Naturaleza', 'leaf', 'Hoja', `<path d="M16 84C8 40 38 12 88 12C88 62 60 90 16 84Z" fill="#5cc26a"${O()}/>` + L('M16 84C34 60 54 40 76 24', '#2f7d32', 4) + L('M40 62l2-16M54 50l2-14M30 70l-10-4', '#2f7d32', 3)],
+  ['Naturaleza', 'drop', 'Gota', `<path d="M50 8C50 8 20 44 20 64a30 30 0 0 0 60 0C80 44 50 8 50 8Z" fill="#3fa9f5"${O()}/>` + L('M32 62a18 18 0 0 0 10 16', '#fff', 5) + eyes(62, 9) + smile(70, 7)],
+  ['Naturaleza', 'bolt', 'Rayo', `<polygon points="58,6 20,56 46,56 38,94 80,40 54,40" fill="#ffd21f"${O(7)}/>`],
+  ['Naturaleza', 'snow', 'Copo de nieve', rot(6, a => LL('M50 10V50M50 26l-9-9M50 26l9-9', '#6cc8ff', 5).replace(/<path /g, `<path transform="rotate(${a} 50 50)" `))],
+  // ---- Caritas y animales
+  ['Caritas', 'smile', 'Sonrisa', face(eyes(44) + smile(58, 16) + cheeks())],
+  ['Caritas', 'wink', 'Guiño', face(L('M24 44q6-7 13 0', INK, 3.6) + `<circle cx="63" cy="44" r="3.8" fill="${INK}"/>` + smile(58, 16) + cheeks())],
+  ['Caritas', 'loveeyes', 'Ojos de corazón', face(heart(21, 28, .2, '#e0193f') + heart(61, 28, .2, '#e0193f') + smile(60, 16))],
+  ['Caritas', 'cool', 'Con gafas', face('<rect x="16" y="36" width="30" height="18" rx="6" fill="#222"/><rect x="54" y="36" width="30" height="18" rx="6" fill="#222"/>' + L('M46 42h8', '#222', 3.5) + smile(64, 14))],
+  ['Caritas', 'wow', 'Sorprendido', face(eyes(42) + L('M26 30q7-5 14 0M60 30q7-5 14 0', INK, 3) + '<ellipse cx="50" cy="66" rx="7" ry="9" fill="#7a2a2a"/>')],
+  ['Caritas', 'ghost', 'Fantasma', `<path d="M20 90V46a30 30 0 0 1 60 0v44l-10-8-10 8-10-8-10 8-10-8z" fill="#f4f6ff"${O()}/>` + eyes(46, 11) + '<ellipse cx="50" cy="62" rx="6" ry="7" fill="#444"/>' + cheeks(58)],
+  ['Caritas', 'cat', 'Gato', two('<polygon points="14,44 20,6 46,24"/><polygon points="86,44 80,6 54,24"/><ellipse cx="50" cy="58" rx="38" ry="32"/>', '#ffb35c') + '<polygon points="22,34 24,16 36,26" fill="#ff9aa8"/><polygon points="78,34 76,16 64,26" fill="#ff9aa8"/>' + eyes(54, 15) + '<polygon points="46,62 54,62 50,67" fill="#ff7a8c"/>' + L('M50 67q-5 6-10 3M50 67q5 6 10 3', INK, 2.5) + L('M10 60l16 2M10 70l16-4M90 60l-16 2M90 70l-16-4', INK, 2)],
+  ['Caritas', 'bear', 'Osito', two('<circle cx="22" cy="24" r="14"/><circle cx="78" cy="24" r="14"/><circle cx="50" cy="56" r="36"/>', '#b57b4a') + '<circle cx="22" cy="24" r="7" fill="#e6b88c"/><circle cx="78" cy="24" r="7" fill="#e6b88c"/><ellipse cx="50" cy="66" rx="16" ry="12" fill="#f1d3a8"/><ellipse cx="50" cy="61" rx="6" ry="4" fill="#3a2a1a"/>' + eyes(48, 14) + L('M50 65v5M44 72q6 4 12 0', INK, 2.5)],
+  ['Caritas', 'bunny', 'Conejito', two('<ellipse cx="34" cy="26" rx="11" ry="24"/><ellipse cx="66" cy="26" rx="11" ry="24"/><ellipse cx="50" cy="68" rx="33" ry="26"/>', '#f1e8ff') + '<ellipse cx="34" cy="28" rx="5" ry="15" fill="#ffb3d1"/><ellipse cx="66" cy="28" rx="5" ry="15" fill="#ffb3d1"/>' + eyes(64, 14) + '<ellipse cx="50" cy="72" rx="4" ry="3" fill="#ff7a9c"/>' + L('M50 75q-5 6-9 3M50 75q5 6 9 3', INK, 2.5) + cheeks(72)],
+  ['Caritas', 'chick', 'Pollito', two('<circle cx="50" cy="56" r="34"/>', '#ffe14d') + L('M44 22q6-16 12 0', '#ffe14d', 6) + '<polygon points="43,56 57,56 50,67" fill="#ff9a2e"/>' + eyes(48, 14) + '<ellipse cx="17" cy="62" rx="7" ry="12" fill="#ffd21a" transform="rotate(20 17 62)"/><ellipse cx="83" cy="62" rx="7" ry="12" fill="#ffd21a" transform="rotate(-20 83 62)"/>' + cheeks(58)],
+  // ---- Fiesta
+  ['Fiesta', 'star', 'Estrella feliz', `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe45c"/><stop offset="1" stop-color="#ffab1a"/></linearGradient></defs><path d="M50 7l13 28 31 4-23 21 6 31-27-15-27 15 6-31L6 39l31-4z" fill="url(#g)"${O(7)}/><circle cx="41" cy="50" r="3.5" fill="#5a3200"/><circle cx="59" cy="50" r="3.5" fill="#5a3200"/><path d="M42 59q8 8 16 0" fill="none" stroke="#5a3200" stroke-width="3.5" stroke-linecap="round"/><circle cx="35" cy="58" r="4" fill="#ff7a7a" fill-opacity=".55"/><circle cx="65" cy="58" r="4" fill="#ff7a7a" fill-opacity=".55"/>`],
+  ['Fiesta', 'balloon', 'Globo', LL('M50 78q-9 8 0 13t0 8', '#888', 2.5) + `<ellipse cx="50" cy="38" rx="27" ry="32" fill="#ff4d6d"${O()}/><polygon points="50,69 44,79 56,79" fill="#e0304f"/>` + '<ellipse cx="39" cy="26" rx="6" ry="10" transform="rotate(20 39 26)" fill="#fff" fill-opacity=".5"/>'],
+  ['Fiesta', 'gift', 'Regalo', two('<ellipse cx="38" cy="22" rx="13" ry="8" transform="rotate(-25 38 22)"/><ellipse cx="62" cy="22" rx="13" ry="8" transform="rotate(25 62 22)"/>', '#ffd23f', 8) + `<rect x="14" y="44" width="72" height="46" rx="4" fill="#5b8def"${O()}/><rect x="10" y="32" width="80" height="16" rx="4" fill="#3f6fd6"${O()}/><rect x="44" y="32" width="12" height="58" fill="#ffd23f"/>` + '<circle cx="50" cy="30" r="6" fill="#ffc21a"/>'],
+  ['Fiesta', 'cake', 'Pastel', `<rect x="12" y="62" width="76" height="28" rx="7" fill="#f7c58b"${O()}/><rect x="22" y="40" width="56" height="28" rx="7" fill="#ff8fb8"${O()}/>` + L('M22 48q7 10 14 0t14 0t14 0t14 0', '#fff', 6) + `<rect x="46" y="20" width="8" height="20" rx="2" fill="#6ec6ff"${O(4)}/><path d="M50 6q8 8 0 14q-8-6 0-14z" fill="#ffb02e"/>`],
+  ['Fiesta', 'hat', 'Gorro de fiesta', `<path d="M50 10L88 90H12z" fill="#8e6bff"${O()}/>` + '<circle cx="50" cy="52" r="5" fill="#ffd23f"/><circle cx="38" cy="72" r="5" fill="#ff7aa8"/><circle cx="62" cy="74" r="5" fill="#6ee0c0"/><circle cx="50" cy="32" r="3.5" fill="#fff"/>' + `<circle cx="50" cy="10" r="8" fill="#ffd23f"${O(4)}/>`],
+  ['Fiesta', 'sparkle', 'Destello', `<path d="M50 6Q54 46 94 50Q54 54 50 94Q46 54 6 50Q46 46 50 6Z" fill="#ffe45c"${O()}/><path transform="translate(70 4) scale(.25)" d="M50 6Q54 46 94 50Q54 54 50 94Q46 54 6 50Q46 46 50 6Z" fill="#fff3a0"${O(14)}/>`],
+  ['Fiesta', 'crown', 'Corona', `<path d="M12 80L8 30l24 22 18-34 18 34 24-22-4 50z" fill="#ffc928"${O()}/><rect x="12" y="70" width="76" height="14" rx="4" fill="#f5a800"/><circle cx="26" cy="77" r="4" fill="#e0193f"/><circle cx="50" cy="77" r="4" fill="#3fa9f5"/><circle cx="74" cy="77" r="4" fill="#43b05c"/>`],
+  ['Fiesta', 'diamond', 'Diamante', `<polygon points="28,14 72,14 94,38 50,92 6,38" fill="#5fd0ff"${O()}/>` + L('M6 38h88M28 14l-6 24 28 54M72 14l6 24-28 54M36 38l14-24 14 24', '#fff', 2.5).replace('fill="none"', 'fill="none" opacity=".75"')],
+  ['Fiesta', 'confetti', 'Confeti', ['#ff5a5a', '#ffc23f', '#5ad17a', '#5aa9ff', '#c26bff', '#ff7aa8'].map((c, i) => [[14, 20], [50, 10], [82, 24], [26, 52], [70, 50], [12, 82], [48, 74], [84, 84], [58, 36], [34, 92], [90, 56], [30, 30]].filter((_, j) => j % 6 === i || (j + 3) % 6 === i).map(([x, y], j) => `<rect x="${x - 7}" y="${y - 3}" width="14" height="6" rx="2" transform="rotate(${(i * 47 + j * 70) % 180} ${x} ${y})" fill="${c}"${O(3)}/>`).join('')).join('')],
+  ['Fiesta', 'fireworks', 'Fuegos artificiales', rot(12, a => `<path transform="rotate(${a} 50 50)" d="M50 12v20" stroke="${['#ff5a5a', '#ffc23f', '#5aa9ff'][(a / 30) % 3]}" stroke-width="6" stroke-linecap="round"/>`) + rot(12, a => `<circle transform="rotate(${a + 15} 50 50)" cx="50" cy="18" r="4" fill="#ffe45c"/>`) + '<circle cx="50" cy="50" r="6" fill="#fff"/>'],
+  // ---- Comida y objetos
+  ['Objetos', 'icecream', 'Helado', `<path d="M30 54h40L50 94z" fill="#e3a857"${O()}/>` + L('M38 62l18 22M62 62L44 84M34 70h32', '#c98a36', 2.5) + `<circle cx="50" cy="44" r="22" fill="#ff9ec4"${O()}/><circle cx="50" cy="26" r="18" fill="#9be8c8"${O()}/><circle cx="50" cy="8" r="5" fill="#e0193f"${O(3)}/>`],
+  ['Objetos', 'pizza', 'Pizza', `<path d="M50 92L10 22Q50 4 90 22Z" fill="#ffc94d"${O()}/>` + L('M10 22Q50 4 90 22', '#d98a3a', 10) + '<circle cx="38" cy="38" r="7" fill="#d9342b"/><circle cx="62" cy="38" r="7" fill="#d9342b"/><circle cx="50" cy="62" r="6.5" fill="#d9342b"/>'],
+  ['Objetos', 'coffee', 'Café', LL('M72 44h6a10 10 0 0 1 0 20h-8', '#ff8a65', 6) + `<ellipse cx="46" cy="84" rx="38" ry="8" fill="#fff" stroke="#cfd6dd" stroke-width="2"/><path d="M18 38h56v22a28 28 0 0 1-56 0z" fill="#ff8a65"${O()}/>` + L('M34 26q-6-8 0-14M50 26q-6-8 0-14', '#9aa3ad', 4)],
+  ['Objetos', 'donut', 'Dona', `<path d="M50 12a38 38 0 1 0 .01 0zM50 39a11 11 0 1 1-.01 0z" fill-rule="evenodd" fill="#f4b36b"${O()}/><path d="M50 18a32 32 0 1 0 .01 0zM50 36a14 14 0 1 1-.01 0z" fill-rule="evenodd" fill="#ff7ab8"/>` + [[30, 34, 20, '#fff'], [66, 32, -30, '#ffd23f'], [76, 56, 60, '#6ec6ff'], [60, 78, 10, '#fff'], [28, 62, -50, '#ffd23f'], [38, 82, 40, '#6ec6ff']].map(([x, y, r, c]) => `<rect x="${x - 4}" y="${y - 1.5}" width="8" height="3" rx="1.5" transform="rotate(${r} ${x} ${y})" fill="${c}"/>`).join('')],
+  ['Objetos', 'cherry', 'Cerezas', LL('M50 14Q40 30 32 58M50 14Q62 30 68 60', '#3c8a3a', 4) + two('<ellipse cx="62" cy="14" rx="14" ry="6" transform="rotate(-20 62 14)"/>', '#4caf50', 6) + `<circle cx="30" cy="72" r="18" fill="#e0193f"${O()}/><circle cx="70" cy="74" r="18" fill="#e0193f"${O()}/><circle cx="24" cy="66" r="4" fill="#fff" fill-opacity=".6"/><circle cx="64" cy="68" r="4" fill="#fff" fill-opacity=".6"/>`],
+  ['Objetos', 'apple', 'Manzana', LL('M50 30Q50 18 58 10', '#7a4a2a', 5) + two('<ellipse cx="68" cy="14" rx="13" ry="6" transform="rotate(-25 68 14)"/>', '#4caf50', 6) + `<path d="M50 30C30 14 8 34 14 62c4 20 20 30 36 24 16 6 32-4 36-24C92 34 70 14 50 30z" fill="#e53935"${O()}/>` + L('M24 48q2-8 8-12', '#fff', 4).replace('<path', '<path opacity=".6"')],
+  ['Objetos', 'camera', 'Cámara', `<rect x="34" y="16" width="32" height="18" rx="4" fill="#4a4f57"${O()}/><rect x="8" y="28" width="84" height="58" rx="11" fill="#4a4f57"${O()}/><rect x="16" y="36" width="12" height="8" rx="2" fill="#ffd23f"/><circle cx="50" cy="58" r="21" fill="#cfd6dd"/><circle cx="50" cy="58" r="15" fill="#2b6cb0"/><circle cx="50" cy="58" r="7" fill="#9fd0ff"/><circle cx="44" cy="52" r="3" fill="#fff" fill-opacity=".7"/>`],
+  ['Objetos', 'music', 'Nota musical', LL('M34 72V26l40-10v46', '#3a3a8a', 6) + '<polygon points="34,26 74,16 74,30 34,40" fill="#3a3a8a"/>' + `<ellipse cx="26" cy="74" rx="12" ry="9" fill="#3a3a8a"${O(4)}/><ellipse cx="66" cy="64" rx="12" ry="9" fill="#3a3a8a"${O(4)}/>`],
+  ['Objetos', 'headphones', 'Auriculares', LL('M18 62V50a32 32 0 0 1 64 0v12', '#333', 8) + `<rect x="8" y="54" width="20" height="32" rx="8" fill="#ff5c8a"${O()}/><rect x="72" y="54" width="20" height="32" rx="8" fill="#ff5c8a"${O()}/>`],
+  ['Objetos', 'plane', 'Avión de papel', `<polygon points="6,46 94,8 66,92 46,62" fill="#7cc4ff"${O()}/><polygon points="46,62 94,8 38,54" fill="#4a9be0"/><polygon points="46,62 52,86 62,70" fill="#3b86c8"/>`]
+];
+const STICKERS = {}, STK_CATS = {};
+LIST.forEach(([cat, id, name, body]) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${body}</svg>`;
+  const t = STICKERS[id] = {name, cat, svg, url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), img: new Image()};
+  t.img.src = t.url; (STK_CATS[cat] = STK_CATS[cat] || []).push(id);
+});
+const stickers = [];   // {k, x, y, s} en mm
+function addSticker(k, cx, cy) { // cx, cy: centro en mm
+  const s = 22; stickers.push({k, x: cx - s / 2, y: cy - s / 2, s}); renderStickers();
+}
+function renderStickers() {
+  sheet.querySelectorAll('.stk').forEach(e => e.remove());
+  stickers.forEach(st => {
+    const d = document.createElement('div'); d.className = 'stk';
+    Object.assign(d.style, {left: st.x + 'mm', top: st.y + 'mm', width: st.s + 'mm', height: st.s + 'mm'});
+    d.innerHTML = `<img src="${STICKERS[st.k].url}" alt="${STICKERS[st.k].name}">`;
+    const x = document.createElement('button'); x.className = 'sx'; x.textContent = '×'; x.title = 'Quitar sticker';
+    x.addEventListener('pointerdown', e => e.stopPropagation());
+    x.onclick = () => { stickers.splice(stickers.indexOf(st), 1); d.remove(); };
+    d.appendChild(x);
+    let sx, sy, ox, oy;
+    d.addEventListener('pointerdown', e => { d.setPointerCapture(e.pointerId); sx = e.clientX; sy = e.clientY; ox = st.x; oy = st.y; d.style.cursor = 'grabbing'; });
+    d.addEventListener('pointermove', e => {
+      if (!d.hasPointerCapture(e.pointerId)) return;
+      const mm = G.W / sheet.getBoundingClientRect().width;
+      st.x = Math.min(G.W - st.s / 2, Math.max(-st.s / 2, ox + (e.clientX - sx) * mm));
+      st.y = Math.min(G.H - st.s / 2, Math.max(-st.s / 2, oy + (e.clientY - sy) * mm));
+      d.style.left = st.x + 'mm'; d.style.top = st.y + 'mm';
+    });
+    d.addEventListener('pointerup', () => d.style.cursor = 'grab');
+    d.addEventListener('wheel', e => {
+      e.preventDefault();
+      const n = Math.min(80, Math.max(6, st.s * (e.deltaY < 0 ? 1.08 : 1 / 1.08)));
+      st.x -= (n - st.s) / 2; st.y -= (n - st.s) / 2; st.s = n;
+      Object.assign(d.style, {left: st.x + 'mm', top: st.y + 'mm', width: n + 'mm', height: n + 'mm'});
+    }, {passive: false});
+    sheet.appendChild(d);
+  });
+}
+Object.keys(STK_CATS).forEach(c => $('stkCat').add(new Option(c, c)));
+function renderTray() {
+  $('stkList').innerHTML = '';
+  STK_CATS[$('stkCat').value].forEach(k => {
+    const t = STICKERS[k], b = document.createElement('button'); b.className = 'st'; b.draggable = true; b.title = t.name;
+    b.innerHTML = `<img src="${t.url}" alt="${t.name}">`;
+    b.addEventListener('dragstart', e => e.dataTransfer.setData('text/sticker', k));
+    b.addEventListener('click', () => addSticker(k, G.W / 2, G.H / 2));
+    $('stkList').appendChild(b);
+  });
+}
+$('stkCat').addEventListener('change', renderTray); renderTray();
+$('stkClear').addEventListener('click', () => { stickers.length = 0; renderStickers(); });
+main.addEventListener('drop', e => {
+  const k = e.dataTransfer.getData('text/sticker'); if (!k) return;
+  const r = sheet.getBoundingClientRect();
+  addSticker(k, (e.clientX - r.left) / r.width * G.W, (e.clientY - r.top) / r.height * G.H);
+});
+
+// Ayuda
+const SHORTCUTS = [
+  ['Ctrl + S', 'Descargar PDF'], ['O', 'Agregar fotos'], ['F', 'Misma foto en todas las tarjetas'],
+  ['G', 'Mostrar/ocultar líneas de corte'], ['H', 'Ocultar/mostrar barras de herramientas'],
+  ['Ctrl + Shift + Supr', 'Vaciar todas las fotos'], ['F1 o ?', 'Abrir/cerrar esta ayuda'], ['Esc', 'Cerrar la ayuda']
+];
+const help = document.createElement('div'); help.id = 'help';
+help.innerHTML = `<div class="box"><button class="x" title="Cerrar">×</button><h2>¿Cómo usar el sitio?</h2>
+<ol><li><b>Elige la plantilla</b> (Instax, Polaroid, photocard…) y el tamaño de hoja. Se calcula cuántas tarjetas caben.</li>
+<li><b>Agrega fotos</b> con «Agregar fotos», soltándolas sobre la hoja o haciendo clic en un «+». «Foto en todas» repite la misma imagen en todas las tarjetas.</li>
+<li><b>Reencuadra</b> arrastrando la foto dentro de su marco. Con el mouse encima: ↻ reemplaza, × quita.</li>
+<li><b>Cambia el fondo</b> de cada tarjeta (color, 🖼 imagen, ✦ predefinido) o el de todas con «Color a todas», «Imagen a todas» y «Fondos predefinidos».</li>
+<li><b>Pie de foto:</b> escribe en el marco; ajusta fuente, tamaño y color arriba. «Texto a todas» repite un mismo texto.</li>
+<li><b>Sin marco</b> genera sangrado y marcas de corte para recortar con precisión.</li>
+<li><b>Stickers:</b> arrástralos desde la barra a la hoja, muévelos, cambia su tamaño con la rueda del mouse y quítalos con ×.</li>
+<li>Pulsa <b>Descargar PDF</b> e imprímelo al 100 % (sin «ajustar a página»).</li></ol>
+<h3>Atajos de teclado</h3><table>${SHORTCUTS.map(([k, d]) => `<tr><td><kbd>${k}</kbd></td><td>${d}</td></tr>`).join('')}</table></div>`;
+document.body.appendChild(help);
+const toggleHelp = on => help.classList.toggle('open', on);
+$('helpBtn').addEventListener('click', () => toggleHelp());
+help.addEventListener('click', e => { if (e.target === help || e.target.className === 'x') toggleHelp(false); });
+
+// Atajos de teclado
+document.addEventListener('keydown', e => {
+  const t = e.target.tagName, typing = t === 'INPUT' && !['checkbox', 'color'].includes(e.target.type) || t === 'TEXTAREA' || t === 'SELECT';
+  if (e.key === 'Escape') return toggleHelp(false);
+  if (e.key === 'F1') { e.preventDefault(); return toggleHelp(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); return $('export').click(); }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Delete') { e.preventDefault(); return $('clear').click(); }
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === '?') toggleHelp();
+  else if (k === 'o') $('multi').click();
+  else if (k === 'f') $('allPhoto').click();
+  else if (k === 'g') { $('guides').checked = !$('guides').checked; $('guides').dispatchEvent(new Event('change')); }
+  else if (k === 'h') $('toggleTools').click();
 });
 
 rebuild();
