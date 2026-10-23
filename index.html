@@ -283,6 +283,7 @@
     <label class="opt">Modelo <input type="text" id="aiModel" value="flux" style="width:90px"></label>
   </div>
   <div class="st" id="aiInfo"></div>
+  <div class="st" id="aiMode"></div>
   <div class="anim" id="aiAnim"><span class="pen">✏️</span>
     <div class="t"><span>Esta imagen: <b id="aiTImg">0:00</b></span><span>Total: <b id="aiTAll">0:00</b></span></div></div>
   <div class="bar"><i id="aiBar"></i></div>
@@ -1132,6 +1133,7 @@ rebuild();
     const t = token();
     $('aiConnect').style.display = t ? 'none' : ''; $('aiLogout').style.display = t ? '' : 'none';
     if (t) $('aiLoginSt').textContent = '✅ Conectado';
+    $('aiMode').textContent = t ? '' : 'Sin iniciar sesión: modo gratuito, 1 imagen cada ~45 s y calidad menor. Conecta tu cuenta para ir más rápido.';
     const e = emptySlots();
     $('aiInfo').textContent = `Tarjetas vacías: ${e}` + (e ? '' : ' (vacía alguna para generar)');
     $('aiN').max = Math.max(1, e); if (+$('aiN').value > e && e) $('aiN').value = e;
@@ -1170,24 +1172,29 @@ rebuild();
     ui();
   };
 
+  async function wait(secs, label) {
+    for (let t = secs; t > 0 && !cancel; t--) { $('aiMsg').textContent = `${label} ${t}s ⏳`; await sleep(1000); }
+  }
   async function gen(prompt, w, h, model) {
-    for (let a = 0; a < 4; a++) {
+    const anon = !token();
+    for (let a = 0; a < 5; a++) {
       if (cancel) return null;
       const seed = Math.floor(Math.random() * 1e6);
-      const u = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true` + (model ? '&model=' + encodeURIComponent(model) : '');
+      const q = `width=${w}&height=${h}&seed=${seed}&nologo=true` + (model && (!anon || a < 2) ? '&model=' + encodeURIComponent(model) : '');
+      const u = anon ? `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${q}`
+                     : `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${q}`;
       try {
-        const r = await fetch(u, {headers: {Authorization: 'Bearer ' + token()}});
+        const r = await fetch(u, anon ? {} : {headers: {Authorization: 'Bearer ' + token()}});
         if (r.ok && (r.headers.get('content-type') || '').startsWith('image')) return await r.blob();
-        if ([401, 402, 403].includes(r.status)) throw new Error(r.status === 401 ? 'sesión caducada, vuelve a conectar' : 'sin permiso o sin saldo de pollen (error ' + r.status + ')');
+        if (!anon && [401, 402, 403].includes(r.status)) throw new Error(r.status === 401 ? 'sesión caducada, vuelve a conectar' : 'sin permiso o sin saldo de pollen (error ' + r.status + ')');
       } catch (e) { if (/sesión|saldo/.test(e.message)) throw e; }
-      for (let s = 8; s > 0 && !cancel; s--) { $('aiMsg').textContent = `Reintentando en ${s}s…`; await sleep(1000); }
+      await wait(anon ? 47 : 8, anon ? 'Límite gratuito, reintento en' : 'Reintentando en');
     }
     throw new Error('el servicio no respondió');
   }
 
   $('aiGo').onclick = async () => {
     const p = $('aiPrompt').value.trim();
-    if (!token()) { $('aiMsg').textContent = 'Primero conecta tu cuenta de Pollinations.'; return; }
     if (!p) { $('aiMsg').textContent = 'Escribe qué imagen quieres.'; return; }
     const n = Math.min(+$('aiN').value || 1, emptySlots());
     if (!n) { $('aiMsg').textContent = 'No hay tarjetas vacías.'; return; }
@@ -1209,6 +1216,7 @@ rebuild();
         if (!blob) break;
         await addFiles([new File([blob], 'ia-' + Date.now() + '.png', {type: blob.type || 'image/png'})]);
         done++; $('aiBar').style.width = (done / n * 100) + '%'; ui();
+        if (!token() && i < n - 1 && !cancel) await wait(46, 'Esperando el turno gratuito…');
       }
       $('aiMsg').textContent = cancel ? `Detenido (${done} generadas).` : `Listo: ${done} imagen(es) colocadas ✨`;
     } catch (e) { $('aiMsg').textContent = 'Error: ' + e.message; }
