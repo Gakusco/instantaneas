@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fotos instantáneas → PDF</title>
+<style>
+  :root{--bg:#1e1f22;--panel:#2a2b2f;--text:#e8e8ea;--muted:#9a9ca3;--accent:#ff7a3d;--line:#44464d}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,sans-serif;display:flex;flex-direction:column;min-height:100vh}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  header h1{font-size:16px;margin:0 auto 0 0}
+  .info{color:var(--muted);font-size:13px}
+  button,label.btn,select,input[type=number]{background:#3a3c42;color:var(--text);border:1px solid var(--line);padding:8px 12px;border-radius:6px;font:inherit}
+  button,label.btn{cursor:pointer}
+  button:hover,label.btn:hover{background:#464851}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#111;font-weight:600}
+  .opt{display:flex;gap:6px;align-items:center;color:var(--muted)}
+  input[type=number]{width:64px;padding:6px}
+  #custom{display:none;flex-wrap:wrap;gap:8px;align-items:center;width:100%;padding-top:4px}
+  #custom.on{display:flex}
+  main{flex:1;overflow:auto;padding:20px;display:flex;justify-content:center}
+  .stage{position:relative}
+  .sheet{background:#fff;position:absolute;top:0;left:0;transform-origin:top left;box-shadow:0 4px 30px #000a}
+  .card{position:absolute;background:#fff}
+  .sheet.guides .card{outline:.2mm solid #bbb}
+  .photo{position:absolute;background:#ececec;overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#999;font-size:9mm}
+  .photo img{width:100%;height:100%;object-fit:cover;display:block;cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none}
+  .photo.filled{cursor:default}
+  .tools{position:absolute;top:1mm;right:1mm;display:none;gap:1mm}
+  .photo.filled:hover .tools{display:flex}
+  .tools button{padding:0;width:6mm;height:6mm;font-size:3.6mm;line-height:1;border-radius:50%;background:#000b;border:0;color:#fff}
+  .cardtools{position:absolute;right:1.5mm;bottom:1.5mm;display:none;gap:1mm;align-items:center}
+  .card:hover .cardtools{display:flex}
+  .cardtools button,.cardtools input{width:6mm;height:6mm;padding:0;border-radius:50%;border:.3mm solid #888;background:#fff;color:#222;font-size:3.4mm;line-height:1;cursor:pointer}
+  .cardtools input{padding:.2mm}
+  input[type=color]{cursor:pointer}
+  .sheet.frameless.guides .card::after{content:'';position:absolute;inset:0;border:.25mm dashed #ff7a3d;pointer-events:none;z-index:3}
+  .sheet.frameless .cardtools{display:none!important}
+  .hint{color:var(--muted);font-size:12px;padding:0 16px 14px;text-align:center}
+  .drop{outline:3px dashed var(--accent);outline-offset:-6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Fotos instantáneas → PDF</h1>
+  <select id="tpl" title="Plantilla"></select>
+  <select id="paper" title="Tamaño de hoja"></select>
+  <span class="opt" id="paperCustom" style="display:none">Hoja: <input type="number" id="p_w" value="210" min="50" step=".5"> × <input type="number" id="p_h" value="297" min="50" step=".5"> mm</span>
+  <select id="orient" title="Orientación de la hoja">
+    <option value="auto">Orientación: automática</option>
+    <option value="p">Hoja vertical</option>
+    <option value="l">Hoja horizontal</option>
+  </select>
+  <label class="opt">Margen mín. <input type="number" id="margin" value="8" min="0" max="30" step="1"> mm</label>
+  <label class="opt"><input type="checkbox" id="guides" checked> Líneas de corte</label>
+  <label class="opt">Fondo <input type="color" id="allColor" value="#ffffff"></label>
+  <button id="applyAll" title="Aplica este color a todos los marcos">Aplicar a todas</button>
+  <label class="opt"><input type="checkbox" id="frameless"> Sin marco</label>
+  <label class="opt">Sangrado <input type="number" id="bleed" value="1" min="0" max="5" step=".5"> mm</label>
+  <label class="opt">Separación <input type="number" id="gap" value="4" min="0" max="20" step=".5"> mm</label>
+  <span class="info" id="layoutInfo"></span>
+  <span class="info" id="count"></span>
+  <label class="btn">Agregar fotos<input type="file" id="multi" accept="image/*" multiple hidden></label>
+  <button id="clear">Vaciar</button>
+  <button class="primary" id="export">Descargar PDF</button>
+  <div id="custom">
+    <span class="info">Tarjeta (mm):</span>
+    Ancho <input type="number" id="c_cw" step=".5"> Alto <input type="number" id="c_ch" step=".5">
+    <span class="info">Foto:</span>
+    Ancho <input type="number" id="c_pw" step=".5"> Alto <input type="number" id="c_ph" step=".5">
+    <span class="info">Borde izq.</span><input type="number" id="c_px" step=".1">
+    <span class="info">Borde sup.</span><input type="number" id="c_py" step=".1">
+  </div>
+</header>
+<main id="main"><div class="stage" id="stage"><div class="sheet guides" id="sheet"></div></div></main>
+<div class="hint">Arrastra la foto dentro del marco para reencuadrar · Pasa el mouse sobre una tarjeta para cambiar su fondo (color o imagen) · Puedes soltar varias imágenes sobre la hoja</div>
+<input type="file" id="single" accept="image/*" hidden>
+<input type="file" id="bgFile" accept="image/*" hidden>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// Plantillas: cw/ch = tarjeta, pw/ph = área de foto, px = borde izquierdo, py = borde superior (mm)
+const TEMPLATES = {
+  mini:    {name:'Instax Mini (54×86 mm)',            cw:54,  ch:86,  pw:46, ph:62, px:4,   py:7.4},
+  square:  {name:'Instax Cuadradas (72×86 mm)',       cw:72,  ch:86,  pw:62, ph:62, px:5,   py:6},
+  wide:    {name:'Instax Anchas (108×86 mm)',         cw:108, ch:86,  pw:99, ph:62, px:4.5, py:6},
+  polaroid:{name:'Polaroid Clásica (88×107 mm)',      cw:88,  ch:107, pw:79, ph:79, px:4.5, py:4.5},
+  spectra: {name:'Polaroid Spectra (101×103 mm)',     cw:101, ch:103, pw:92, ph:73, px:4.5, py:6},
+  photocard:{name:'Photocard (55×85 mm, sin marco)',     cw:55, ch:85,  pw:55, ph:85,  px:0, py:0, frameless:true},
+  square62: {name:'Cuadrada (62×62 mm, sin marco)',       cw:62, ch:62,  pw:62, ph:62,  px:0, py:0, frameless:true},
+  strip:    {name:'Tira fotomatón (51×152 mm, sin marco)',cw:51, ch:152, pw:51, ph:152, px:0, py:0, frameless:true},
+  idphoto:  {name:'Foto carnet (35×45 mm, sin marco)',    cw:35, ch:45,  pw:35, ph:45,  px:0, py:0, frameless:true},
+  custom:  {name:'Personalizado…',                    cw:54,  ch:86,  pw:46, ph:62, px:4,   py:7.4}
+};
+const MAXN = 30, MM = 96 / 25.4;
+let G = {};                          // geometría activa
+const slots = Array(MAXN).fill(null); // {img,url,fx,fy}
+let photoEls = [], cardEls = [], replaceIdx = null, bgIdx = null;
+const bgs = Array.from({length: MAXN}, () => ({color: '#ffffff', img: null, url: null})); // fondo por tarjeta
+function applyBg(i) {
+  const c = cardEls[i], b = bgs[i]; if (!c) return;
+  c.style.backgroundColor = b.color;
+  c.style.backgroundImage = b.url ? `url(${b.url})` : 'none';
+  c.style.backgroundSize = 'cover'; c.style.backgroundPosition = 'center';
+}
+function refreshBgs() { cardEls.forEach((c, i) => { applyBg(i); c._ci.value = bgs[i].color; }); }
+
+const $ = id => document.getElementById(id);
+const sheet = $('sheet'), stage = $('stage'), main = $('main'), single = $('single');
+
+// Tamaños de hoja (ancho × alto en vertical, mm). A4 por defecto.
+const PAPERS = {
+  a4:     {name:'A4 (210×297 mm)',               w:210, h:297},
+  letter: {name:'Carta (216×279 mm)',            w:216, h:279},
+  legal:  {name:'Oficio Chile (216×330 mm)',     w:216, h:330},
+  a3:     {name:'A3 (297×420 mm)',               w:297, h:420},
+  f10x15: {name:'Papel foto 10×15 cm (102×152 mm)', w:102, h:152},
+  f13x18: {name:'Papel foto 13×18 cm (127×178 mm)', w:127, h:178},
+  custom: {name:'Hoja personalizada…',           w:210, h:297}
+};
+function paperDims() {
+  if ($('paper').value === 'custom') {
+    const a = Math.max(50, parseFloat($('p_w').value) || 210), b = Math.max(50, parseFloat($('p_h').value) || 297);
+    return {w: Math.min(a, b), h: Math.max(a, b)};
+  }
+  return PAPERS[$('paper').value];
+}
+Object.entries(PAPERS).forEach(([k, t]) => $('paper').add(new Option(t.name, k)));
+
+// Selector de plantillas
+Object.entries(TEMPLATES).forEach(([k, t]) => $('tpl').add(new Option(t.name, k)));
+
+function currentTpl() {
+  const k = $('tpl').value;
+  if (k !== 'custom') return TEMPLATES[k];
+  const g = id => Math.max(1, parseFloat($('c_' + id).value) || 1);
+  return {cw:g('cw'), ch:g('ch'), pw:g('pw'), ph:g('ph'), px:parseFloat($('c_px').value) || 0, py:parseFloat($('c_py').value) || 0};
+}
+function fillCustomInputs(t) { for (const k of ['cw','ch','pw','ph','px','py']) $('c_' + k).value = t[k]; }
+
+// Calcula cuántas tarjetas caben y su posición
+function computeLayout() {
+  let t = currentTpl();
+  const m = Math.max(0, parseFloat($('margin').value) || 0);
+  const fl = !!(t.frameless || $('frameless').checked);
+  const b = fl ? Math.max(0, parseFloat($('bleed').value) || 0) : 0, g = fl ? Math.max(2 * b, parseFloat($('gap').value) || 0) : 0; // separación entre líneas de corte (mínimo 2 × sangrado)
+  if (fl) t = {...t, px: -b, py: -b, pw: t.cw + 2*b, ph: t.ch + 2*b};
+  const calc = o => {
+    const PD = paperDims(), W = o === 'p' ? PD.w : PD.h, H = o === 'p' ? PD.h : PD.w;
+    let cols = Math.max(1, Math.floor((W - 2*m - 2*b + g) / (t.cw + g))), rows = Math.max(1, Math.floor((H - 2*m - 2*b + g) / (t.ch + g)));
+    while (cols * rows > MAXN) { if (rows >= cols) rows--; else cols--; }
+    return {o, W, H, cols, rows, n: cols * rows};
+  };
+  const sel = $('orient').value, P = calc('p'), L = calc('l');
+  const L0 = sel === 'p' ? P : sel === 'l' ? L : (L.n > P.n ? L : P);
+  G = {...t, ...L0, fl, b, g,
+       mx: (L0.W - (L0.cols * t.cw + (L0.cols - 1) * g)) / 2, my: (L0.H - (L0.rows * t.ch + (L0.rows - 1) * g)) / 2};
+  $('layoutInfo').textContent = `${G.cols}×${G.rows} = ${G.n} por hoja (${G.o === 'p' ? 'vertical' : 'horizontal'})` + (fl ? ` · sangrado ${b} mm, separación ${g} mm` : '');
+}
+
+function rebuild() {
+  computeLayout();
+  sheet.innerHTML = ''; photoEls = []; cardEls = [];
+  sheet.classList.toggle('frameless', G.fl);
+  sheet.style.width = G.W + 'mm'; sheet.style.height = G.H + 'mm';
+  for (let i = 0; i < G.n; i++) {
+    const c = document.createElement('div'); c.className = 'card';
+    Object.assign(c.style, {width: G.cw + 'mm', height: G.ch + 'mm',
+      left: (G.mx + (i % G.cols) * (G.cw + G.g)) + 'mm', top: (G.my + Math.floor(i / G.cols) * (G.ch + G.g)) + 'mm'});
+    const p = document.createElement('div'); p.className = 'photo';
+    Object.assign(p.style, {left: G.px + 'mm', top: G.py + 'mm', width: G.pw + 'mm', height: G.ph + 'mm'});
+    p.addEventListener('click', () => { if (!slots[i]) { replaceIdx = i; single.click(); } });
+    c.appendChild(p);
+    const tl = document.createElement('div'); tl.className = 'cardtools';
+    const ci = document.createElement('input'); ci.type = 'color'; ci.title = 'Color de fondo'; ci.value = bgs[i].color;
+    ci.addEventListener('input', () => { bgs[i].color = ci.value; applyBg(i); });
+    const ib = document.createElement('button'); ib.textContent = '🖼'; ib.title = 'Imagen de fondo';
+    ib.onclick = e => { e.stopPropagation(); bgIdx = i; $('bgFile').click(); };
+    const rb = document.createElement('button'); rb.textContent = '⟲'; rb.title = 'Restablecer a blanco';
+    rb.onclick = e => { e.stopPropagation(); if (bgs[i].url) URL.revokeObjectURL(bgs[i].url); bgs[i] = {color: '#ffffff', img: null, url: null}; ci.value = '#ffffff'; applyBg(i); };
+    tl.append(ci, ib, rb); c.appendChild(tl); c._ci = ci;
+    sheet.appendChild(c); photoEls.push(p); cardEls.push(c); applyBg(i);
+  }
+  render(); fit();
+}
+
+function render() {
+  photoEls.forEach((p, i) => {
+    const s = slots[i];
+    p.innerHTML = ''; p.classList.toggle('filled', !!s);
+    if (!s) { p.textContent = '+'; return; }
+    const img = document.createElement('img');
+    img.src = s.url; img.draggable = false;
+    img.style.objectPosition = `${s.fx * 100}% ${s.fy * 100}%`;
+    enableDrag(img, s);
+    p.appendChild(img);
+    const t = document.createElement('div'); t.className = 'tools';
+    const rep = document.createElement('button'); rep.textContent = '↻'; rep.title = 'Reemplazar';
+    rep.onclick = () => { replaceIdx = i; single.click(); };
+    const del = document.createElement('button'); del.textContent = '×'; del.title = 'Quitar';
+    del.onclick = () => { URL.revokeObjectURL(s.url); slots[i] = null; render(); };
+    t.append(rep, del); p.appendChild(t);
+  });
+  const used = slots.slice(0, G.n).filter(Boolean).length, extra = slots.filter(Boolean).length - used;
+  $('count').textContent = `${used} / ${G.n}` + (extra > 0 ? ` (+${extra} ocultas)` : '');
+}
+
+function enableDrag(img, s) {
+  let sx, sy, ox, oy;
+  img.addEventListener('pointerdown', e => {
+    img.setPointerCapture(e.pointerId);
+    sx = e.clientX; sy = e.clientY; ox = s.fx; oy = s.fy; img.style.cursor = 'grabbing';
+  });
+  img.addEventListener('pointermove', e => {
+    if (!img.hasPointerCapture(e.pointerId)) return;
+    const rc = img.getBoundingClientRect(), bw = rc.width, bh = rc.height;
+    const r = s.img.naturalWidth / s.img.naturalHeight;
+    const ovX = r > bw / bh ? bh * r - bw : 0, ovY = r < bw / bh ? bw / r - bh : 0;
+    if (ovX) s.fx = Math.min(1, Math.max(0, ox - (e.clientX - sx) / ovX));
+    if (ovY) s.fy = Math.min(1, Math.max(0, oy - (e.clientY - sy) / ovY));
+    img.style.objectPosition = `${s.fx * 100}% ${s.fy * 100}%`;
+  });
+  img.addEventListener('pointerup', () => img.style.cursor = 'grab');
+}
+
+function loadFile(file) {
+  return new Promise(res => {
+    if (!file.type.startsWith('image/')) return res(null);
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => res({img, url, fx: .5, fy: .5});
+    img.onerror = () => res(null);
+    img.src = url;
+  });
+}
+async function addFiles(files) {
+  for (const f of files) {
+    const idx = slots.slice(0, G.n).findIndex(s => !s);
+    if (idx < 0) break;
+    const s = await loadFile(f);
+    if (s) slots[idx] = s;
+  }
+  render();
+}
+
+single.addEventListener('change', async () => {
+  const f = single.files[0]; single.value = '';
+  if (!f || replaceIdx === null) return;
+  const s = await loadFile(f);
+  if (s) { if (slots[replaceIdx]) URL.revokeObjectURL(slots[replaceIdx].url); slots[replaceIdx] = s; render(); }
+  replaceIdx = null;
+});
+$('multi').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
+['dragenter','dragover'].forEach(ev => main.addEventListener(ev, e => { e.preventDefault(); main.classList.add('drop'); }));
+['dragleave','drop'].forEach(ev => main.addEventListener(ev, e => { e.preventDefault(); main.classList.remove('drop'); }));
+main.addEventListener('drop', e => addFiles([...e.dataTransfer.files]));
+
+$('bgFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f || bgIdx === null) return;
+  const s = await loadFile(f);
+  if (s) { if (bgs[bgIdx].url) URL.revokeObjectURL(bgs[bgIdx].url); bgs[bgIdx].img = s.img; bgs[bgIdx].url = s.url; applyBg(bgIdx); }
+  bgIdx = null;
+});
+$('applyAll').addEventListener('click', () => {
+  const col = $('allColor').value;
+  bgs.forEach(b => { if (b.url) URL.revokeObjectURL(b.url); b.color = col; b.img = null; b.url = null; });
+  refreshBgs();
+});
+$('guides').addEventListener('change', e => sheet.classList.toggle('guides', e.target.checked));
+$('clear').addEventListener('click', () => {
+  slots.forEach((s, i) => { if (s) URL.revokeObjectURL(s.url); slots[i] = null; });
+  render();
+});
+
+// Cambios de plantilla / opciones
+$('tpl').addEventListener('change', () => {
+  const k = $('tpl').value;
+  $('custom').classList.toggle('on', k === 'custom');
+  if (k === 'custom') fillCustomInputs(TEMPLATES.custom);
+  const cb = $('frameless');
+  if (TEMPLATES[k].frameless) { cb.checked = true; cb.disabled = true; cb.dataset.forced = '1'; }
+  else { cb.disabled = false; if (cb.dataset.forced) { cb.checked = false; delete cb.dataset.forced; } }
+  rebuild();
+});
+$('paper').addEventListener('change', () => {
+  $('paperCustom').style.display = $('paper').value === 'custom' ? 'flex' : 'none';
+  rebuild();
+});
+['p_w','p_h'].forEach(id => $(id).addEventListener('input', rebuild));
+['orient','margin','bleed','gap','frameless'].forEach(id => $(id).addEventListener('input', rebuild));
+['cw','ch','pw','ph','px','py'].forEach(k => $('c_' + k).addEventListener('input', rebuild));
+
+// Escalar la hoja a la pantalla
+function fit() {
+  const w = G.W * MM, h = G.H * MM;
+  const avail = Math.min(main.clientWidth - 40, (window.innerHeight - 160) * w / h);
+  const k = Math.min(1.4, Math.max(.3, avail / w));
+  sheet.style.transform = `scale(${k})`;
+  stage.style.width = w * k + 'px'; stage.style.height = h * k + 'px';
+}
+window.addEventListener('resize', fit);
+
+// Exportar PDF
+$('export').addEventListener('click', () => {
+  if (!window.jspdf) { alert('No se pudo cargar jsPDF (se necesita conexión a internet).'); return; }
+  const doc = new window.jspdf.jsPDF({unit: 'mm', format: [paperDims().w, paperDims().h], orientation: G.o === 'p' ? 'portrait' : 'landscape'});
+  const guides = $('guides').checked, PPM = 12; // ~305 dpi
+  for (let i = 0; i < G.n; i++) {
+    const x = G.mx + (i % G.cols) * (G.cw + G.g), y = G.my + Math.floor(i / G.cols) * (G.ch + G.g), s = slots[i];
+    const b = G.fl ? {color: '#ffffff', img: null} : bgs[i];
+    doc.setFillColor(b.color); doc.rect(x, y, G.cw, G.ch, 'F');
+    if (b.img) {
+      const BW = Math.round(G.cw * 8), BH = Math.round(G.ch * 8), bc = document.createElement('canvas'); bc.width = BW; bc.height = BH;
+      const bi = b.img, bk = Math.max(BW / bi.naturalWidth, BH / bi.naturalHeight), bsw = BW / bk, bsh = BH / bk;
+      bc.getContext('2d').drawImage(bi, (bi.naturalWidth - bsw) / 2, (bi.naturalHeight - bsh) / 2, bsw, bsh, 0, 0, BW, BH);
+      doc.addImage(bc.toDataURL('image/jpeg', .9), 'JPEG', x, y, G.cw, G.ch);
+    }
+    if (guides && !G.fl) { doc.setDrawColor(190); doc.setLineWidth(.15); doc.rect(x, y, G.cw, G.ch); }
+    if (!s) continue;
+    const W = Math.round(G.pw * PPM), H = Math.round(G.ph * PPM);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const iw = s.img.naturalWidth, ih = s.img.naturalHeight;
+    const k = Math.max(W / iw, H / ih), sw = W / k, sh = H / k;
+    cv.getContext('2d').drawImage(s.img, (iw - sw) * s.fx, (ih - sh) * s.fy, sw, sh, 0, 0, W, H);
+    doc.addImage(cv.toDataURL('image/jpeg', .93), 'JPEG', x + G.px, y + G.py, G.pw, G.ph);
+  }
+  if (guides && G.fl) { // marcas de corte en el margen, fuera del sangrado
+    doc.setDrawColor(90); doc.setLineWidth(.15);
+    const gt = G.my - G.b, gb = G.my + G.rows * G.ch + (G.rows - 1) * G.g + G.b;
+    const gl = G.mx - G.b, gr = G.mx + G.cols * G.cw + (G.cols - 1) * G.g + G.b, O = 1, T = 4;
+    for (let c = 0; c < G.cols; c++) for (const xx of [G.mx + c * (G.cw + G.g), G.mx + c * (G.cw + G.g) + G.cw]) {
+      doc.line(xx, gt - O - T, xx, gt - O); doc.line(xx, gb + O, xx, gb + O + T);
+    }
+    for (let r = 0; r < G.rows; r++) for (const yy of [G.my + r * (G.ch + G.g), G.my + r * (G.ch + G.g) + G.ch]) {
+      doc.line(gl - O - T, yy, gl - O, yy); doc.line(gr + O, yy, gr + O + T, yy);
+    }
+  }
+  doc.save(`fotos-${$('tpl').value}-${$('paper').value}.pdf`);
+});
+
+rebuild();
+</script>
+</body>
+</html>
