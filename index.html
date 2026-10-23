@@ -9,14 +9,7 @@
   :root{--bg:#1e1f22;--panel:#2a2b2f;--text:#e8e8ea;--muted:#9a9ca3;--accent:#ff7a3d;--line:#44464d}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,sans-serif;display:flex;flex-direction:column;min-height:100vh}
-  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
   #topbars{position:sticky;top:0;z-index:5}
-  #miniBar{display:flex;gap:10px;align-items:center;padding:4px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
-  #miniBar button{padding:3px 10px;font-size:12px}
-  #exportMini{display:none}
-  #topbars.collapsed #exportMini{display:inline-block}
-  #topbars.collapsed header,#topbars.collapsed #capbarWrap,#topbars.collapsed #stkbar{display:none!important}
-  header h1{font-size:16px;margin:0 auto 0 0}
   .info{color:var(--muted);font-size:13px}
   button,label.btn,select,input[type=number]{background:#3a3c42;color:var(--text);border:1px solid var(--line);padding:8px 12px;border-radius:6px;font:inherit}
   button,label.btn{cursor:pointer}
@@ -42,14 +35,14 @@
   .cardtools button,.cardtools input{width:6mm;height:6mm;padding:0;border-radius:50%;border:.3mm solid #888;background:#fff;color:#222;font-size:3.4mm;line-height:1;cursor:pointer}
   .cardtools input{padding:.2mm}
   input[type=color]{cursor:pointer}
-  .sheet.frameless.guides .card::after{content:'';position:absolute;inset:0;border:.25mm dashed #ff7a3d;pointer-events:none;z-index:3}
-  .sheet.frameless .cardtools{display:none!important}
+  .sheet.guides .card.fl::after{content:'';position:absolute;inset:0;border:.25mm dashed #ff7a3d;pointer-events:none;z-index:3}
+  .card.fl .cardtools{display:none!important}
   #capbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%}
   #allText{background:#3a3c42;color:var(--text);border:1px solid var(--line);padding:8px 12px;border-radius:6px;font:inherit;width:210px}
   .cap{position:absolute;background:transparent;border:0;outline:0;padding:0;margin:0;box-sizing:border-box;text-align:center;color:#222;z-index:2}
   .cap::placeholder{color:transparent}
   .card:hover .cap::placeholder{color:#aaa}
-  .sheet.frameless .cap{display:none}
+  .card.fl .cap{display:none}
   .presetmenu{position:absolute;right:0;bottom:7mm;display:none;gap:1mm;background:#fff;padding:1mm;border:.3mm solid #888;border-radius:1.5mm}
   .presetmenu.open{display:flex}
   .cardtools .presetmenu .pm{width:9mm;height:9mm;border-radius:1mm;background-size:cover;background-position:center;padding:0}
@@ -63,14 +56,72 @@
   #help .x{position:absolute;top:8px;right:8px;padding:2px 10px;font-size:18px}
   #help td{padding:3px 12px 3px 0} kbd{background:#3a3c42;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:12px monospace}
   #stkList{display:flex;gap:6px;overflow-x:auto;padding:2px}
-  #stkbar{display:flex;gap:8px;align-items:center;background:var(--panel);padding:6px 16px;border-bottom:1px solid var(--line)}
-  #stkbar .st{flex:none;width:40px;height:40px;padding:3px;cursor:grab;background:#3a3c42;border:1px solid var(--line);border-radius:6px}
-  #stkbar .st img{width:100%;height:100%;display:block;pointer-events:none}
+  #stkList .st{flex:none;width:40px;height:40px;padding:3px;cursor:grab;background:#3a3c42;border:1px solid var(--line);border-radius:6px}
+  #stkList .st img{width:100%;height:100%;display:block;pointer-events:none}
   .stk{position:absolute;z-index:6;cursor:grab;touch-action:none;user-select:none}
   .stk img{width:100%;height:100%;display:block;pointer-events:none;filter:drop-shadow(0 .3mm .5mm #0005)}
   .stk .sx{display:none;position:absolute;top:-2mm;right:-2mm;width:5mm;height:5mm;padding:0;border-radius:50%;border:0;background:#000b;color:#fff;font-size:3.4mm;line-height:1;cursor:pointer}
   .stk:hover .sx{display:block}
   .stk:hover{outline:.3mm dashed var(--accent)}
+  .sizetool{position:absolute;left:1.5mm;top:1mm;display:none;z-index:7}
+  .card:hover .sizetool{display:block}
+  .sizetool>button{width:6mm;height:6mm;padding:0;border-radius:50%;border:.3mm solid #888;background:#fff;color:#222;font-size:3.4mm;line-height:1;cursor:pointer}
+  .sizetool>button.own{background:var(--accent)}
+  #tplMenu{position:fixed;z-index:60;display:none;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px;box-shadow:0 6px 24px #000a}
+  #tplMenu button{text-align:left;padding:6px 10px;border:0;background:transparent;border-radius:5px;font-size:13px}
+  #tplMenu button:hover{background:#464851} #tplMenu button.cur{background:var(--accent);color:#111;font-weight:600}
+  #cam{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:55;padding:16px}
+  #cam.open{display:flex}
+  #cam .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;max-width:560px;width:100%;display:flex;flex-direction:column;gap:10px}
+  #cam video{width:100%;max-height:60vh;background:#000;border-radius:6px;object-fit:cover}
+  #cam .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  #cam .row .info{margin-right:auto}
+  #mainbar{display:flex;gap:8px;align-items:center;padding:10px 16px;background:var(--panel)}
+  #mainbar h1{font-size:16px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .logo{width:26px;height:26px;vertical-align:middle;margin-right:8px}
+  .grow{flex:1}
+  .hs{display:none}
+  #tabs{display:flex;gap:2px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+  #tabs button{flex:none;background:transparent;border:0;border-bottom:3px solid transparent;border-radius:0;padding:9px 14px;color:var(--muted);white-space:nowrap}
+  #tabs button:hover{background:#34363b}
+  #tabs button.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+  #panel{background:#25262a;border-bottom:1px solid var(--line)}
+  .tabpanel{display:none;flex-wrap:wrap;gap:12px 24px;align-items:flex-start;padding:12px 16px}
+  .tabpanel.on{display:flex}
+  .grp{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .gl{width:100%;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .note{width:100%;color:var(--muted);font-size:12px}
+  #capbar{align-items:center;width:auto}
+  #topbars.collapsed #tabs,#topbars.collapsed #panel{display:none}
+  .allfl #capbar{display:none}
+  #capNone{display:none}
+  .allfl #capNone{display:block}
+  #stkList{max-width:100%}
+  @media (max-width:700px){
+    #mainbar{padding:8px 12px;gap:6px}
+    #mainbar h1{font-size:14px}
+    .h1b,.hl{display:none}
+    .hs{display:inline}
+    #mainbar button{padding:7px 10px}
+    #tabs{padding:0 4px}
+    #tabs button{padding:9px 11px}
+    .tabpanel{max-height:44vh;overflow-y:auto;padding:10px 12px;gap:10px}
+    .grp{width:100%}
+    .grp>select,.grp>button,.grp>label.btn{flex:1 1 auto}
+    #tpl,#paper,#orient{flex:1 1 100%}
+    button,label.btn,select,input[type=number],#allText{font-size:16px}
+    #allText{width:100%}
+    #capbar{width:100%}
+    #stkList{flex:1 1 100%}
+    main{padding:8px}
+    .hint{font-size:11px;padding:0 12px 10px}
+  }
+  .photo.disc{border-radius:50%}
+  .sheet.guides .card.disc{outline:none}
+  .card.disc::after{border-radius:50%}
+  .hole{position:absolute;border-radius:50%;background:#fff;border:.25mm dashed #999;z-index:3;pointer-events:none}
+  .fold{position:absolute;top:0;bottom:0;border-left:.3mm dashed #fff;mix-blend-mode:difference;display:none;z-index:3;pointer-events:none}
+  .sheet.guides .fold{display:block}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -78,44 +129,77 @@
 </head>
 <body>
 <div id="topbars">
-<header>
-  <h1>Fotos instantáneas → PDF</h1>
-  <select id="tpl" title="Plantilla"></select>
-  <select id="paper" title="Tamaño de hoja"></select>
-  <span class="opt" id="paperCustom" style="display:none">Hoja: <input type="number" id="p_w" value="210" min="50" step=".5"> × <input type="number" id="p_h" value="297" min="50" step=".5"> mm</span>
-  <select id="orient" title="Orientación de la hoja">
-    <option value="auto">Orientación: automática</option>
-    <option value="p">Hoja vertical</option>
-    <option value="l">Hoja horizontal</option>
-  </select>
-  <label class="opt">Margen mín. <input type="number" id="margin" value="8" min="0" max="30" step="1"> mm</label>
-  <label class="opt"><input type="checkbox" id="guides" checked> Líneas de corte</label>
-  <label class="opt">Fondo <input type="color" id="allColor" value="#ffffff"></label>
-  <button id="applyAll" title="Aplica este color a todos los marcos (quita las imágenes de fondo)">Color a todas</button>
-  <button id="applyAllImg" title="Usa la misma imagen de fondo en todos los marcos">Imagen a todas</button>
-  <select id="presetAll" title="Aplica un fondo predefinido a todos los marcos"><option value="">Fondos predefinidos…</option><option value="sunset">Atardecer</option><option value="paper">Cuaderno</option><option value="night">Noche estrellada</option><option value="ocean">Océano</option><option value="forest">Bosque</option><option value="aurora">Aurora boreal</option><option value="candy">Caramelo</option><option value="sakura">Sakura</option><option value="desert">Desierto</option><option value="galaxy">Galaxia</option><option value="mint">Menta</option><option value="lava">Lava</option><option value="geo">Geométrico</option></select>
-  <label class="opt"><input type="checkbox" id="frameless"> Sin marco</label>
-  <label class="opt">Sangrado <input type="number" id="bleed" value="1" min="0" max="5" step=".5"> mm</label>
-  <label class="opt">Separación <input type="number" id="gap" value="4" min="0" max="20" step=".5"> mm</label>
-  <span class="info" id="layoutInfo"></span>
-  <span class="info" id="count"></span>
-  <label class="btn" title="Pone la misma foto en todas las tarjetas (F)">Foto en todas<input type="file" id="allPhoto" accept="image/*" hidden></label>
-  <label class="btn">Agregar fotos<input type="file" id="multi" accept="image/*" multiple hidden></label>
-  <button id="clear">Vaciar</button>
-  <button id="helpBtn" title="Ayuda y atajos (F1 o ?)">¿Necesitas ayuda?</button>
-  <button class="primary" id="export">Descargar PDF</button>
-  <div id="custom">
-    <span class="info">Tarjeta (mm):</span>
-    Ancho <input type="number" id="c_cw" step=".5"> Alto <input type="number" id="c_ch" step=".5">
-    <span class="info">Foto:</span>
-    Ancho <input type="number" id="c_pw" step=".5"> Alto <input type="number" id="c_ph" step=".5">
-    <span class="info">Borde izq.</span><input type="number" id="c_px" step=".1">
-    <span class="info">Borde sup.</span><input type="number" id="c_py" step=".1">
-  </div>
+<header id="mainbar">
+  <h1><img src="./favicon.svg" alt="" class="logo">Fotos instantáneas <span class="h1b">→ PDF</span></h1>
+  <span class="grow"></span>
+  <button id="helpBtn" title="Ayuda y atajos (F1 o ?)"><span class="hl">¿Necesitas ayuda?</span><span class="hs">?</span></button>
+  <button class="primary" id="export">⬇ Descargar PDF</button>
+  <button id="toggleTools" title="Ocultar o mostrar las herramientas">▲ Ocultar</button>
 </header>
-<div id="capbarWrap" style="background:var(--panel);padding:0 16px 12px;border-bottom:1px solid var(--line)">
-<div id="capbar">
-  <span class="info">Pie de foto:</span>
+<nav id="tabs">
+  <button data-tab="fotos" class="on">📷 Fotos</button>
+  <button data-tab="hoja">📐 Hoja</button>
+  <button data-tab="fondos">🎨 Fondos</button>
+  <button data-tab="texto">✏️ Texto</button>
+  <button data-tab="stickers">⭐ Stickers</button>
+</nav>
+<section id="panel">
+  <div class="tabpanel on" data-p="fotos">
+    <div class="grp"><span class="gl">Agregar</span>
+      <label class="btn">Agregar fotos<input type="file" id="multi" accept="image/*" multiple hidden></label>
+      <button id="camBtn" title="Sacar una foto con la cámara (C)">📷 Tomar foto</button>
+      <label class="btn" title="Pone la misma foto en todas las tarjetas (F)">Foto en todas<input type="file" id="allPhoto" accept="image/*" hidden></label>
+    </div>
+    <div class="grp"><span class="gl">Hoja</span>
+      <button id="clear">Vaciar fotos</button>
+      <span class="info" id="count"></span>
+    </div>
+    <div class="note">Arrastra la foto dentro del marco para reencuadrar. También puedes soltar varias imágenes sobre la hoja.</div>
+  </div>
+  <div class="tabpanel" data-p="hoja">
+    <div class="grp"><span class="gl">Formato</span>
+      <select id="tpl" title="Plantilla"></select>
+      <button id="resetTpl" title="Todas las tarjetas vuelven a la plantilla general">Igualar tarjetas</button>
+      <select id="paper" title="Tamaño de hoja"></select>
+      <span class="opt" id="paperCustom" style="display:none">Hoja: <input type="number" id="p_w" value="210" min="50" step=".5"> × <input type="number" id="p_h" value="297" min="50" step=".5"> mm</span>
+      <select id="orient" title="Orientación de la hoja">
+        <option value="auto">Orientación: automática</option>
+        <option value="p">Hoja vertical</option>
+        <option value="l">Hoja horizontal</option>
+      </select>
+      <label class="opt" title="Limita cuántas tarjetas se colocan en la hoja (vacío = todas las que quepan)">Cantidad <input type="number" id="maxCards" min="1" max="30" step="1" placeholder="auto"></label>
+      <span class="info" id="layoutInfo"></span>
+    </div>
+    <div id="custom">
+      <span class="info">Tarjeta (mm):</span>
+      Ancho <input type="number" id="c_cw" step=".5"> Alto <input type="number" id="c_ch" step=".5">
+      <span class="info">Foto:</span>
+      Ancho <input type="number" id="c_pw" step=".5"> Alto <input type="number" id="c_ph" step=".5">
+      <span class="info">Borde izq.</span><input type="number" id="c_px" step=".1">
+      <span class="info">Borde sup.</span><input type="number" id="c_py" step=".1">
+    </div>
+    <div class="grp"><span class="gl">Espaciado</span>
+      <label class="opt">Margen mín. <input type="number" id="margin" value="8" min="0" max="30" step="1"> mm</label>
+      <label class="opt">Separación <input type="number" id="gap" value="4" min="0" max="20" step=".5"> mm</label>
+      <label class="opt">Sangrado <input type="number" id="bleed" value="1" min="0" max="5" step=".5"> mm</label>
+    </div>
+    <div class="grp"><span class="gl">Opciones</span>
+      <label class="opt"><input type="checkbox" id="guides" checked> Líneas de corte</label>
+      <label class="opt"><input type="checkbox" id="frameless"> Sin marco</label>
+    </div>
+  </div>
+  <div class="tabpanel" data-p="fondos">
+    <div class="grp"><span class="gl">Todas las tarjetas</span>
+      <label class="opt">Color <input type="color" id="allColor" value="#ffffff"></label>
+      <button id="applyAll" title="Aplica este color a todos los marcos (quita las imágenes de fondo)">Color a todas</button>
+      <button id="applyAllImg" title="Usa la misma imagen de fondo en todos los marcos">Imagen a todas</button>
+      <select id="presetAll" title="Aplica un fondo predefinido a todos los marcos"><option value="">Fondos predefinidos…</option><option value="sunset">Atardecer</option><option value="paper">Cuaderno</option><option value="night">Noche estrellada</option><option value="ocean">Océano</option><option value="forest">Bosque</option><option value="aurora">Aurora boreal</option><option value="candy">Caramelo</option><option value="sakura">Sakura</option><option value="desert">Desierto</option><option value="galaxy">Galaxia</option><option value="mint">Menta</option><option value="lava">Lava</option><option value="geo">Geométrico</option></select>
+    </div>
+    <div class="note">Para cambiar el fondo de una sola tarjeta, pasa el mouse (o toca) sobre ella.</div>
+  </div>
+  <div class="tabpanel" data-p="texto">
+    <div id="capNone" class="note">Las plantillas sin marco no llevan pie de foto.</div>
+    <div id="capbar">
   <select id="capFont" title="Fuente">
     <option value="hand">Manuscrita</option>
     <option value="marker">Marcador</option>
@@ -135,12 +219,15 @@
   <button id="applyAllText" title="Escribe el texto en todas las tarjetas (vacío = borrar todos)">Texto a todas</button>
   <span class="info">Escribe el texto de cada foto directamente en su marco.</span>
 </div>
-</div>
-<div id="stkbar"><span class="info">Stickers:</span><select id="stkCat" title="Categoría"></select><span id="stkList"></span><span class="info">Arrastra a la hoja · rueda = tamaño</span><button id="stkClear">Quitar stickers</button></div>
-<div id="miniBar">
-  <button id="toggleTools" title="Ocultar o mostrar las barras de herramientas">▲ Ocultar herramientas</button>
-  <button id="exportMini" class="primary">Descargar PDF</button>
-</div>
+  </div>
+  <div class="tabpanel" data-p="stickers">
+    <div class="grp"><span class="gl">Stickers</span>
+      <select id="stkCat" title="Categoría"></select><span id="stkList"></span>
+      <button id="stkClear">Quitar stickers</button>
+    </div>
+    <div class="note">Arrastra un sticker a la hoja (o haz clic para ponerlo al centro) · rueda del mouse = tamaño.</div>
+  </div>
+</section>
 </div>
 <main id="main"><div class="stage" id="stage"><div class="sheet guides" id="sheet"></div></div></main>
 <div class="hint">Arrastra la foto dentro del marco para reencuadrar · Pasa el mouse sobre una tarjeta para cambiar su fondo (color o imagen) · Puedes soltar varias imágenes sobre la hoja</div>
@@ -161,6 +248,8 @@ const TEMPLATES = {
   square62: {name:'Cuadrada (62×62 mm, sin marco)',       cw:62, ch:62,  pw:62, ph:62,  px:0, py:0, frameless:true},
   strip:    {name:'Tira fotomatón (51×152 mm, sin marco)',cw:51, ch:152, pw:51, ph:152, px:0, py:0, frameless:true},
   idphoto:  {name:'Foto carnet (35×45 mm, sin marco)',    cw:35, ch:45,  pw:35, ph:45,  px:0, py:0, frameless:true},
+  cd:       {name:'Portada CD para cartuchera (120×120 mm, sin marco)', cw:120, ch:120, pw:120, ph:120, px:0, py:0, frameless:true},
+  cddisc:   {name:'Disco CD (118 mm, circular, sin marco)',              cw:118, ch:118, pw:118, ph:118, px:0, py:0, frameless:true, disc:true, hole:15},
   custom:  {name:'Personalizado…',                    cw:54,  ch:86,  pw:46, ph:62, px:4,   py:7.4}
 };
 const MAXN = 30, MM = 96 / 25.4;
@@ -309,7 +398,7 @@ const FONTS = {
   mono:   "'Courier New',monospace"
 };
 function capStyle() { return {family: FONTS[$('capFont').value], size: Math.max(1, parseFloat($('capSize').value) || 5.5), align: $('capAlign').value}; }
-function capFont(ppm) { const st = capStyle(); return `${st.size * ppm}px ${st.family}`; }
+function capFont(ppm, sc = 1) { const st = capStyle(); return `${st.size * sc * ppm}px ${st.family}`; }
 function bgLum(i) { // luminosidad 0..1 del fondo (si es imagen, del 30 % inferior, donde va el pie de foto)
   const b = bgs[i];
   if (b.img) {
@@ -329,7 +418,7 @@ function capColor(i) { return $('capAuto').checked ? (bgLum(i) < .5 ? '#ffffff' 
 function applyCap(i) {
   const c = cardEls[i]; if (!c || !c._cap) return;
   const st = capStyle(), e = c._cap.style;
-  e.fontFamily = st.family; e.fontSize = st.size + 'mm'; e.textAlign = st.align; e.color = capColor(i);
+  e.fontFamily = st.family; e.fontSize = st.size * ((G.items && G.items[i] || {}).sc || 1) + 'mm'; e.textAlign = st.align; e.color = capColor(i);
 }
 function applyAllCaps() { cardEls.forEach((_, i) => applyCap(i)); }
 function applyBg(i) {
@@ -366,50 +455,92 @@ Object.entries(PAPERS).forEach(([k, t]) => $('paper').add(new Option(t.name, k))
 // Selector de plantillas
 Object.entries(TEMPLATES).forEach(([k, t]) => $('tpl').add(new Option(t.name, k)));
 
-function currentTpl() {
-  const k = $('tpl').value;
-  if (k !== 'custom') return TEMPLATES[k];
+function customTpl() {
   const g = id => Math.max(1, parseFloat($('c_' + id).value) || 1);
   return {cw:g('cw'), ch:g('ch'), pw:g('pw'), ph:g('ph'), px:parseFloat($('c_px').value) || 0, py:parseFloat($('c_py').value) || 0};
 }
+function currentTpl() { const k = $('tpl').value; return k === 'custom' ? customTpl() : TEMPLATES[k]; }
 function fillCustomInputs(t) { for (const k of ['cw','ch','pw','ph','px','py']) $('c_' + k).value = t[k]; }
 
-// Calcula cuántas tarjetas caben y su posición
+// Plantilla propia de cada tarjeta (null = la plantilla general). El orden de las tarjetas es el de lectura.
+const tk = Array(MAXN).fill(null);
+
+// Coloca las tarjetas por filas (cada fila tan alta como su tarjeta más alta) y cuenta cuántas caben
 function computeLayout() {
-  let t = currentTpl();
+  const t = currentTpl();
   const m = Math.max(0, parseFloat($('margin').value) || 0);
-  const fl = !!(t.frameless || $('frameless').checked);
-  const b = fl ? Math.max(0, parseFloat($('bleed').value) || 0) : 0, g = fl ? Math.max(2 * b, parseFloat($('gap').value) || 0) : 0; // separación entre líneas de corte (mínimo 2 × sangrado)
-  if (fl) t = {...t, px: -b, py: -b, pw: t.cw + 2*b, ph: t.ch + 2*b};
+  const gfl = !!(t.frameless || $('frameless').checked);
+  const isFl = i => tk[i] ? !!TEMPLATES[tk[i]].frameless : gfl, anyFl = gfl || tk.some(k => k && TEMPLATES[k].frameless);
+  const b = anyFl ? Math.max(0, parseFloat($('bleed').value) || 0) : 0, g = anyFl ? Math.max(2 * b, parseFloat($('gap').value) || 0) : 0; // separación entre líneas de corte (mínimo 2 × sangrado)
+  const lim = Math.min(MAXN, parseInt($('maxCards').value) || MAXN);
+  const mk = i => { const q = tk[i] ? TEMPLATES[tk[i]] : t, fl = isFl(i), cw = q.cw, ch = q.ch, x = {disc: !!q.disc, hole: q.hole || 0, folds: q.folds || null};
+    return fl ? {...x, fl, sc: 1, cw, ch, px: -b, py: -b, pw: cw + 2*b, ph: ch + 2*b} : {...x, fl, sc: 1, cw, ch, px: q.px, py: q.py, pw: q.pw, ph: q.ph}; };
   const calc = o => {
-    const PD = paperDims(), W = o === 'p' ? PD.w : PD.h, H = o === 'p' ? PD.h : PD.w;
-    let cols = Math.max(1, Math.floor((W - 2*m - 2*b + g) / (t.cw + g))), rows = Math.max(1, Math.floor((H - 2*m - 2*b + g) / (t.ch + g)));
-    while (cols * rows > MAXN) { if (rows >= cols) rows--; else cols--; }
-    return {o, W, H, cols, rows, n: cols * rows};
+    const PD = paperDims(), W = o === 'p' ? PD.w : PD.h, H = o === 'p' ? PD.h : PD.w, uw = W - 2*m - 2*b, uh = H - 2*m - 2*b, E = 1e-6;
+    const rows = []; let row = null, used = 0; // used = altura de las filas ya cerradas (con su separación)
+    for (let i = 0; i < lim; i++) {
+      const it = mk(i);
+      if (!row) { row = {items: [it], w: it.cw, h: it.ch}; continue; }          // la primera siempre se coloca
+      if (row.w + g + it.cw <= uw + E) {
+        const nh = Math.max(row.h, it.ch);
+        if (used + nh > uh + E) break;
+        row.items.push(it); row.w += g + it.cw; row.h = nh;
+      } else {
+        const nu = used + row.h + g;
+        if (nu + it.ch > uh + E) break;
+        used = nu; rows.push(row); row = {items: [it], w: it.cw, h: it.ch};
+      }
+    }
+    rows.push(row);
+    const totalH = rows.reduce((a, r) => a + r.h, 0) + (rows.length - 1) * g;
+    let y = (H - totalH) / 2; const items = [];
+    rows.forEach(r => { let x = (W - r.w) / 2; r.items.forEach(it => { items.push({...it, x, y}); x += it.cw + g; }); y += r.h + g; });
+    const cols = rows[0].items.length;
+    return {o, W, H, items, over: items.some(it => it.cw > uw + E || it.ch > uh + E), n: items.length, nrows: rows.length, cols,
+            uniform: rows.every(r => r.items.length === cols) && items.every(it => it.cw === items[0].cw && it.ch === items[0].ch && it.fl === items[0].fl)};
   };
   const sel = $('orient').value, P = calc('p'), L = calc('l');
-  const L0 = sel === 'p' ? P : sel === 'l' ? L : (L.n > P.n ? L : P);
-  G = {...t, ...L0, fl, b, g,
-       mx: (L0.W - (L0.cols * t.cw + (L0.cols - 1) * g)) / 2, my: (L0.H - (L0.rows * t.ch + (L0.rows - 1) * g)) / 2};
-  $('layoutInfo').textContent = `${G.cols}×${G.rows} = ${G.n} por hoja (${G.o === 'p' ? 'vertical' : 'horizontal'})` + (fl ? ` · sangrado ${b} mm, separación ${g} mm` : '');
+  const L0 = sel === 'p' ? P : sel === 'l' ? L : (P.over && !L.over) ? L : (L.over && !P.over) ? P : (L.n > P.n ? L : P);
+  G = {...L0, fl: L0.items.every(it => it.fl), b, g};
+  $('layoutInfo').textContent = `${G.uniform ? `${G.cols}×${G.nrows} = ${G.n}` : G.n} por hoja (${G.o === 'p' ? 'vertical' : 'horizontal'})` + (anyFl ? ` · sangrado ${b} mm, separación ${g} mm` : '') + (G.over ? ' · ⚠ no cabe en esta hoja (usa una más grande)' : '');
 }
+
+const tplMenu = document.createElement('div'); tplMenu.id = 'tplMenu'; document.body.appendChild(tplMenu);
+function showTplMenu(i, btn) {
+  tplMenu.innerHTML = '';
+  const add = (k, label) => {
+    const o = document.createElement('button'); o.textContent = label; o.className = (tk[i] || '') === k ? 'cur' : '';
+    o.onclick = () => { tk[i] = k || null; tplMenu.style.display = 'none'; rebuild(); };
+    tplMenu.appendChild(o);
+  };
+  add('', 'Igual que la plantilla general');
+  Object.entries(TEMPLATES).forEach(([k, t]) => { if (k !== 'custom') add(k, t.name); });
+  tplMenu.style.display = 'flex';
+  const r = btn.getBoundingClientRect();
+  tplMenu.style.left = Math.max(4, Math.min(r.left, innerWidth - tplMenu.offsetWidth - 4)) + 'px';
+  tplMenu.style.top = Math.max(4, Math.min(r.bottom + 4, innerHeight - tplMenu.offsetHeight - 4)) + 'px';
+}
+document.addEventListener('click', e => { if (!tplMenu.contains(e.target)) tplMenu.style.display = 'none'; });
 
 function rebuild() {
   computeLayout();
   sheet.innerHTML = ''; photoEls = []; cardEls = [];
   sheet.classList.toggle('frameless', G.fl);
-  $('capbarWrap').style.display = G.fl ? 'none' : 'block';
+  document.body.classList.toggle('allfl', G.fl);
   sheet.style.width = G.W + 'mm'; sheet.style.height = G.H + 'mm';
   for (let i = 0; i < G.n; i++) {
-    const c = document.createElement('div'); c.className = 'card';
-    Object.assign(c.style, {width: G.cw + 'mm', height: G.ch + 'mm',
-      left: (G.mx + (i % G.cols) * (G.cw + G.g)) + 'mm', top: (G.my + Math.floor(i / G.cols) * (G.ch + G.g)) + 'mm'});
-    const p = document.createElement('div'); p.className = 'photo';
-    Object.assign(p.style, {left: G.px + 'mm', top: G.py + 'mm', width: G.pw + 'mm', height: G.ph + 'mm'});
+    const it = G.items[i], c = document.createElement('div'); c.className = 'card' + (it.fl ? ' fl' : '') + (it.disc ? ' disc' : '');
+    Object.assign(c.style, {width: it.cw + 'mm', height: it.ch + 'mm',
+      left: it.x + 'mm', top: it.y + 'mm'});
+    const p = document.createElement('div'); p.className = 'photo' + (it.disc ? ' disc' : '');
+    Object.assign(p.style, {left: it.px + 'mm', top: it.py + 'mm', width: it.pw + 'mm', height: it.ph + 'mm'});
     p.addEventListener('click', () => { if (!slots[i]) { replaceIdx = i; single.click(); } });
     c.appendChild(p);
+    if (it.disc && it.hole) { const h = document.createElement('div'); h.className = 'hole';
+      Object.assign(h.style, {width: it.hole + 'mm', height: it.hole + 'mm', left: (it.cw - it.hole) / 2 + 'mm', top: (it.ch - it.hole) / 2 + 'mm'}); c.appendChild(h); }
+    (it.folds || []).forEach(f => { const d = document.createElement('div'); d.className = 'fold'; d.style.left = f + 'mm'; c.appendChild(d); });
     const cap = document.createElement('input'); cap.type = 'text'; cap.className = 'cap'; cap.placeholder = 'Escribe un texto…'; cap.value = capts[i];
-    Object.assign(cap.style, {left: G.px + 'mm', top: (G.py + G.ph) + 'mm', width: G.pw + 'mm', height: Math.max(0, G.ch - G.py - G.ph) + 'mm'});
+    Object.assign(cap.style, {left: it.px + 'mm', top: (it.py + it.ph) + 'mm', width: it.pw + 'mm', height: Math.max(0, it.ch - it.py - it.ph) + 'mm'});
     cap.addEventListener('input', () => { capts[i] = cap.value; });
     c.appendChild(cap); c._cap = cap;
     const tl = document.createElement('div'); tl.className = 'cardtools';
@@ -429,6 +560,10 @@ function rebuild() {
     });
     pb.onclick = e => { e.stopPropagation(); pm.classList.toggle('open'); };
     c.addEventListener('mouseleave', () => pm.classList.remove('open'));
+    const st = document.createElement('div'); st.className = 'sizetool';
+    const sb = document.createElement('button'); sb.textContent = '⤢'; sb.title = 'Tamaño / plantilla de esta tarjeta'; if (tk[i]) sb.classList.add('own');
+    sb.onclick = e => { e.stopPropagation(); showTplMenu(i, sb); };
+    st.appendChild(sb); c.appendChild(st);
     tl.append(ci, ib, pb, rb, pm); c.appendChild(tl); c._ci = ci;
     sheet.appendChild(c); photoEls.push(p); cardEls.push(c); applyBg(i);
   }
@@ -519,10 +654,9 @@ $('applyAllText').addEventListener('click', () => {
 });
 $('toggleTools').addEventListener('click', () => {
   const c = $('topbars').classList.toggle('collapsed');
-  $('toggleTools').textContent = c ? '▼ Mostrar herramientas' : '▲ Ocultar herramientas';
+  $('toggleTools').textContent = c ? '▼ Herramientas' : '▲ Ocultar';
   fit();
 });
-$('exportMini').addEventListener('click', () => $('export').click());
 $('presetAll').addEventListener('change', async e => {
   const k = e.target.value; if (!k) return; e.target.value = '';
   for (let i = 0; i < MAXN; i++) await applyPreset(i, k);
@@ -541,6 +675,7 @@ $('applyAll').addEventListener('click', () => {
   bgs.forEach(b => { if (b.url) URL.revokeObjectURL(b.url); b.color = col; b.img = null; b.url = null; });
   refreshBgs();
 });
+$('resetTpl').addEventListener('click', () => { tk.fill(null); rebuild(); });
 $('guides').addEventListener('change', e => sheet.classList.toggle('guides', e.target.checked));
 $('clear').addEventListener('click', () => {
   slots.forEach((s, i) => { if (s) URL.revokeObjectURL(s.url); slots[i] = null; });
@@ -562,7 +697,7 @@ $('paper').addEventListener('change', () => {
   rebuild();
 });
 ['p_w','p_h'].forEach(id => $(id).addEventListener('input', rebuild));
-['orient','margin','bleed','gap','frameless'].forEach(id => $(id).addEventListener('input', rebuild));
+['orient','margin','bleed','gap','frameless','maxCards'].forEach(id => $(id).addEventListener('input', rebuild));
 ['cw','ch','pw','ph','px','py'].forEach(k => $('c_' + k).addEventListener('input', rebuild));
 
 // Escalar la hoja a la pantalla
@@ -574,54 +709,68 @@ function fit() {
   stage.style.width = w * k + 'px'; stage.style.height = h * k + 'px';
 }
 window.addEventListener('resize', fit);
+new ResizeObserver(fit).observe($('topbars'));
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.tabpanel').forEach(p => p.classList.toggle('on', p.dataset.p === b.dataset.tab));
+}));
 
 // Exportar PDF
 $('export').addEventListener('click', async () => {
   if (!window.jspdf) { alert('No se pudo cargar jsPDF (se necesita conexión a internet).'); return; }
   const doc = new window.jspdf.jsPDF({unit: 'mm', format: [paperDims().w, paperDims().h], orientation: G.o === 'p' ? 'portrait' : 'landscape'});
   const guides = $('guides').checked, PPM = 12; // ~305 dpi
-  if (!G.fl && capts.slice(0, G.n).some(Boolean)) { try { await document.fonts.load(capFont(PPM), 'Aa'); } catch (e) {} }
+  if (G.items.some((it, i) => !it.fl && capts[i])) { try { await document.fonts.load(capFont(PPM, 1), 'Aa'); } catch (e) {} }
   for (let i = 0; i < G.n; i++) {
-    const x = G.mx + (i % G.cols) * (G.cw + G.g), y = G.my + Math.floor(i / G.cols) * (G.ch + G.g), s = slots[i];
-    const b = G.fl ? {color: '#ffffff', img: null} : bgs[i];
-    doc.setFillColor(b.color); doc.rect(x, y, G.cw, G.ch, 'F');
+    const it = G.items[i], x = it.x, y = it.y, s = slots[i];
+    const b = it.fl ? {color: '#ffffff', img: null} : bgs[i];
+    if (!it.disc) { doc.setFillColor(b.color); doc.rect(x, y, it.cw, it.ch, 'F'); }
     if (b.img) {
-      const BW = Math.round(G.cw * 8), BH = Math.round(G.ch * 8), bc = document.createElement('canvas'); bc.width = BW; bc.height = BH;
+      const BW = Math.round(it.cw * 8), BH = Math.round(it.ch * 8), bc = document.createElement('canvas'); bc.width = BW; bc.height = BH;
       const bi = b.img, bk = Math.max(BW / bi.naturalWidth, BH / bi.naturalHeight), bsw = BW / bk, bsh = BH / bk;
       bc.getContext('2d').drawImage(bi, (bi.naturalWidth - bsw) / 2, (bi.naturalHeight - bsh) / 2, bsw, bsh, 0, 0, BW, BH);
-      doc.addImage(bc.toDataURL('image/jpeg', .9), 'JPEG', x, y, G.cw, G.ch);
+      doc.addImage(bc.toDataURL('image/jpeg', .9), 'JPEG', x, y, it.cw, it.ch);
     }
-    if (guides && !G.fl) { doc.setDrawColor(190); doc.setLineWidth(.15); doc.rect(x, y, G.cw, G.ch); }
-    const txt = capts[i], bh = G.ch - G.py - G.ph;
-    if (txt && !G.fl && bh > 1) { // pie de foto dibujado como imagen para respetar la fuente
-      const CW = Math.round(G.pw * PPM), CH = Math.round(bh * PPM), cc = document.createElement('canvas'); cc.width = CW; cc.height = CH;
+    if (guides && !it.fl) { doc.setDrawColor(190); doc.setLineWidth(.15); doc.rect(x, y, it.cw, it.ch); }
+    const txt = capts[i], bh = it.ch - it.py - it.ph;
+    if (txt && !it.fl && bh > 1) { // pie de foto dibujado como imagen para respetar la fuente
+      const CW = Math.round(it.pw * PPM), CH = Math.round(bh * PPM), cc = document.createElement('canvas'); cc.width = CW; cc.height = CH;
       const cx = cc.getContext('2d'), al = capStyle().align;
-      cx.font = capFont(PPM); cx.fillStyle = capColor(i); cx.textBaseline = 'middle'; cx.textAlign = al;
+      cx.font = capFont(PPM, it.sc); cx.fillStyle = capColor(i); cx.textBaseline = 'middle'; cx.textAlign = al;
       cx.fillText(txt, al === 'left' ? 0 : al === 'right' ? CW : CW / 2, CH / 2);
-      doc.addImage(cc.toDataURL('image/png'), 'PNG', x + G.px, y + G.py + G.ph, G.pw, bh);
+      doc.addImage(cc.toDataURL('image/png'), 'PNG', x + it.px, y + it.py + it.ph, it.pw, bh);
     }
     if (!s) continue;
-    const W = Math.round(G.pw * PPM), H = Math.round(G.ph * PPM);
+    const W = Math.round(it.pw * PPM), H = Math.round(it.ph * PPM);
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const iw = s.img.naturalWidth, ih = s.img.naturalHeight;
     const k = Math.max(W / iw, H / ih), sw = W / k, sh = H / k;
-    cv.getContext('2d').drawImage(s.img, (iw - sw) * s.fx, (ih - sh) * s.fy, sw, sh, 0, 0, W, H);
-    doc.addImage(cv.toDataURL('image/jpeg', .93), 'JPEG', x + G.px, y + G.py, G.pw, G.ph);
+    const c2 = cv.getContext('2d');
+    if (it.disc) { c2.beginPath(); c2.arc(W / 2, H / 2, W / 2, 0, 7); if (it.hole) c2.arc(W / 2, H / 2, it.hole * PPM / 2, 0, 7); c2.clip('evenodd'); } // disco: círculo con agujero
+    c2.drawImage(s.img, (iw - sw) * s.fx, (ih - sh) * s.fy, sw, sh, 0, 0, W, H);
+    if (it.disc) doc.addImage(cv.toDataURL('image/png'), 'PNG', x + it.px, y + it.py, it.pw, it.ph);
+    else doc.addImage(cv.toDataURL('image/jpeg', .93), 'JPEG', x + it.px, y + it.py, it.pw, it.ph);
   }
   for (const st of stickers) {
     const c = document.createElement('canvas'); c.width = c.height = 400;
     c.getContext('2d').drawImage(STICKERS[st.k].img, 0, 0, 400, 400);
     doc.addImage(c.toDataURL('image/png'), 'PNG', st.x, st.y, st.s, st.s);
   }
-  if (guides && G.fl) { // marcas de corte en el margen, fuera del sangrado
+  if (guides) for (const it of G.items) {
+    if (it.disc) { doc.setDrawColor(90); doc.setLineWidth(.15); const cx = it.x + it.cw / 2, cy = it.y + it.ch / 2; doc.circle(cx, cy, it.cw / 2); if (it.hole) doc.circle(cx, cy, it.hole / 2); }
+    (it.folds || []).forEach(f => { doc.setDrawColor(120); doc.setLineWidth(.15); doc.setLineDashPattern([1.5, 1.5], 0); doc.line(it.x + f, it.y, it.x + f, it.y + it.ch); doc.setLineDashPattern([], 0); });
+  }
+  const fls = G.items.filter(it => it.fl && !it.disc);
+  if (guides && fls.length) {
     doc.setDrawColor(90); doc.setLineWidth(.15);
-    const gt = G.my - G.b, gb = G.my + G.rows * G.ch + (G.rows - 1) * G.g + G.b;
-    const gl = G.mx - G.b, gr = G.mx + G.cols * G.cw + (G.cols - 1) * G.g + G.b, O = 1, T = 4;
-    for (let c = 0; c < G.cols; c++) for (const xx of [G.mx + c * (G.cw + G.g), G.mx + c * (G.cw + G.g) + G.cw]) {
-      doc.line(xx, gt - O - T, xx, gt - O); doc.line(xx, gb + O, xx, gb + O + T);
-    }
-    for (let r = 0; r < G.rows; r++) for (const yy of [G.my + r * (G.ch + G.g), G.my + r * (G.ch + G.g) + G.ch]) {
-      doc.line(gl - O - T, yy, gl - O, yy); doc.line(gr + O, yy, gr + O + T, yy);
+    if (!G.uniform || fls.length < G.items.length) fls.forEach(it => doc.rect(it.x, it.y, it.cw, it.ch)); // tamaños mixtos: contorno de corte de cada tarjeta
+    else { // marcas de corte en el margen, fuera del sangrado
+      const uq = a => [...new Set(a.map(v => +v.toFixed(3)))], O = 1, T = 4;
+      const xs = uq(fls.flatMap(it => [it.x, it.x + it.cw])), ys = uq(fls.flatMap(it => [it.y, it.y + it.ch]));
+      const gt = Math.min(...fls.map(it => it.y)) - G.b, gb = Math.max(...fls.map(it => it.y + it.ch)) + G.b;
+      const gl = Math.min(...fls.map(it => it.x)) - G.b, gr = Math.max(...fls.map(it => it.x + it.cw)) + G.b;
+      xs.forEach(xx => { doc.line(xx, gt - O - T, xx, gt - O); doc.line(xx, gb + O, xx, gb + O + T); });
+      ys.forEach(yy => { doc.line(gl - O - T, yy, gl - O, yy); doc.line(gr + O, yy, gr + O + T, yy); });
     }
   }
   doc.save(`fotos-${$('tpl').value}-${$('paper').value}.pdf`);
@@ -769,7 +918,7 @@ main.addEventListener('drop', e => {
 
 // Ayuda
 const SHORTCUTS = [
-  ['Ctrl + S', 'Descargar PDF'], ['O', 'Agregar fotos'], ['F', 'Misma foto en todas las tarjetas'],
+  ['Ctrl + S', 'Descargar PDF'], ['O', 'Agregar fotos'], ['C', 'Tomar foto con la cámara'], ['F', 'Misma foto en todas las tarjetas'],
   ['G', 'Mostrar/ocultar líneas de corte'], ['H', 'Ocultar/mostrar barras de herramientas'],
   ['Ctrl + Shift + Supr', 'Vaciar todas las fotos'], ['F1 o ?', 'Abrir/cerrar esta ayuda'], ['Esc', 'Cerrar la ayuda']
 ];
@@ -777,9 +926,12 @@ const help = document.createElement('div'); help.id = 'help';
 help.innerHTML = `<div class="box"><button class="x" title="Cerrar">×</button><h2>¿Cómo usar el sitio?</h2>
 <ol><li><b>Elige la plantilla</b> (Instax, Polaroid, photocard…) y el tamaño de hoja. Se calcula cuántas tarjetas caben.</li>
 <li><b>Agrega fotos</b> con «Agregar fotos», soltándolas sobre la hoja o haciendo clic en un «+». «Foto en todas» repite la misma imagen en todas las tarjetas.</li>
+<li><b>Tomar foto:</b> «📷 Tomar foto» abre la cámara; cada captura va a la siguiente tarjeta libre.</li>
+<li><b>Cantidad:</b> el campo «Cantidad» limita cuántas tarjetas se colocan en la hoja (vacío = todas las que quepan). Las fotos de las tarjetas que sobran no se pierden.</li>
 <li><b>Reencuadra</b> arrastrando la foto dentro de su marco. Con el mouse encima: ↻ reemplaza, × quita.</li>
 <li><b>Cambia el fondo</b> de cada tarjeta (color, 🖼 imagen, ✦ predefinido) o el de todas con «Color a todas», «Imagen a todas» y «Fondos predefinidos».</li>
 <li><b>Pie de foto:</b> escribe en el marco; ajusta fuente, tamaño y color arriba. «Texto a todas» repite un mismo texto.</li>
+<li><b>Plantilla por tarjeta:</b> pasa el mouse sobre una tarjeta y pulsa ⤢ para darle otro formato (Instax, Polaroid, photocard…). La hoja se reacomoda sola y cambia cuántas tarjetas caben. «Igualar tarjetas» las devuelve a la plantilla general.</li>
 <li><b>Sin marco</b> genera sangrado y marcas de corte para recortar con precisión.</li>
 <li><b>Stickers:</b> arrástralos desde la barra a la hoja, muévelos, cambia su tamaño con la rueda del mouse y quítalos con ×.</li>
 <li>Pulsa <b>Descargar PDF</b> e imprímelo al 100 % (sin «ajustar a página»).</li></ol>
@@ -789,10 +941,45 @@ const toggleHelp = on => help.classList.toggle('open', on);
 $('helpBtn').addEventListener('click', () => toggleHelp());
 help.addEventListener('click', e => { if (e.target === help || e.target.className === 'x') toggleHelp(false); });
 
+// Cámara: saca una foto y la pone en la siguiente tarjeta libre
+const cam = document.createElement('div'); cam.id = 'cam';
+cam.innerHTML = `<div class="box"><video autoplay playsinline muted></video><div class="row"><span class="info" id="camInfo"></span><button id="camFlip" title="Cambiar de cámara">⟲ Cambiar cámara</button><button id="camShot" class="primary">📷 Capturar</button><button id="camClose">Cerrar</button></div></div>`;
+document.body.appendChild(cam);
+const camVideo = cam.querySelector('video');
+let camStream = null, camFacing = 'user';
+function camInfo() { const used = slots.slice(0, G.n).filter(Boolean).length; $('camInfo').textContent = `${used} / ${G.n} tarjetas con foto`; }
+async function camStart() {
+  camStop();
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: camFacing, width: {ideal: 1920}, height: {ideal: 1440}}, audio: false});
+    camVideo.srcObject = camStream; camVideo.style.transform = camFacing === 'user' ? 'scaleX(-1)' : 'none';
+  } catch (err) { camClose(); alert('No se pudo acceder a la cámara: ' + (err.message || err.name) + '\nRevisa los permisos del navegador (y que la página se abra por https o localhost).'); }
+}
+function camStop() { if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+function camClose() { camStop(); cam.classList.remove('open'); }
+function camOpen() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert('Este navegador no permite usar la cámara.'); return; }
+  cam.classList.add('open'); camInfo(); camStart();
+}
+$('camBtn').addEventListener('click', camOpen);
+$('camClose').addEventListener('click', camClose);
+$('camFlip').addEventListener('click', () => { camFacing = camFacing === 'user' ? 'environment' : 'user'; camStart(); });
+$('camShot').addEventListener('click', async () => {
+  const idx = slots.slice(0, G.n).findIndex(s => !s);
+  if (idx < 0) { alert('No hay tarjetas libres: vacía o quita alguna foto.'); return; }
+  if (!camVideo.videoWidth) return;
+  const c = document.createElement('canvas'); c.width = camVideo.videoWidth; c.height = camVideo.videoHeight;
+  c.getContext('2d').drawImage(camVideo, 0, 0);
+  const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', .92));
+  const s = await loadFile(new File([blob], 'foto.jpg', {type: 'image/jpeg'}));
+  if (s) { slots[idx] = s; render(); camInfo(); }
+});
+cam.addEventListener('click', e => { if (e.target === cam) camClose(); });
+
 // Atajos de teclado
 document.addEventListener('keydown', e => {
   const t = e.target.tagName, typing = t === 'INPUT' && !['checkbox', 'color'].includes(e.target.type) || t === 'TEXTAREA' || t === 'SELECT';
-  if (e.key === 'Escape') return toggleHelp(false);
+  if (e.key === 'Escape') { camClose(); return toggleHelp(false); }
   if (e.key === 'F1') { e.preventDefault(); return toggleHelp(); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); return $('export').click(); }
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Delete') { e.preventDefault(); return $('clear').click(); }
@@ -800,6 +987,7 @@ document.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (k === '?') toggleHelp();
   else if (k === 'o') $('multi').click();
+  else if (k === 'c') camOpen();
   else if (k === 'f') $('allPhoto').click();
   else if (k === 'g') { $('guides').checked = !$('guides').checked; $('guides').dispatchEvent(new Event('change')); }
   else if (k === 'h') $('toggleTools').click();
