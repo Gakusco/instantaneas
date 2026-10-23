@@ -1,12 +1,12 @@
 # Fotos instantáneas → PDF
 
-Página web de un solo archivo (`index.html`) para acomodar fotos en formato Instax, Polaroid y otros tamaños sobre una hoja (A4 por defecto) y exportarlas a PDF listas para imprimir y recortar.
+Página web de un solo archivo (`instax-a4.html`) para acomodar fotos en formato Instax, Polaroid y otros tamaños sobre una hoja (A4 por defecto) y exportarlas a PDF listas para imprimir y recortar.
 
 Todo funciona en el navegador. Las fotos **no se suben a ningún servidor**.
 
 ## Uso rápido
 
-1. Abre `index.html` en un navegador moderno (Chrome, Edge, Firefox, Safari).
+1. Abre `instax-a4.html` en un navegador moderno (Chrome, Edge, Firefox, Safari).
 2. Elige la **plantilla** y el **tamaño de hoja**.
 3. Pulsa **Agregar fotos** (puedes seleccionar varias) o arrástralas sobre la hoja. Se rellenan los espacios libres en orden.
 4. Reencuadra cada foto arrastrándola dentro de su marco.
@@ -35,6 +35,7 @@ Todo funciona en el navegador. Las fotos **no se suben a ningún servidor**.
 - **Fondo personalizado por tarjeta**: color o imagen de fondo para el marco de cada foto, blanco por defecto. Hay botones para aplicar el mismo color o la misma imagen a todos los marcos.
 - **Pie de foto**: texto en la parte inferior del marco de cada foto (solo con marco). Se escribe directamente en la tarjeta. Se puede elegir fuente (manuscrita, marcador, sencilla, serif, máquina de escribir), tamaño, alineación y color. El color automático usa blanco sobre fondos oscuros y gris oscuro sobre fondos claros. Hay un campo para poner el mismo texto en todas las tarjetas.
 - **Modo sin marco**: la foto ocupa toda la tarjeta, con **sangrado** (la foto se extiende un poco más allá de la línea de corte) y **separación** configurable entre tarjetas.
+- **Herramientas plegables**: un botón bajo las barras las oculta o las muestra para tener más espacio. Con las barras ocultas queda a la vista un botón para descargar el PDF.
 - **Líneas de corte**: opcionales. Con marco se dibuja el contorno de cada tarjeta. Sin marco se dibujan marcas pequeñas en el margen de la hoja, fuera de la foto.
 
 ## Opciones de la barra superior
