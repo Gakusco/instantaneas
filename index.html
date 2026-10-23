@@ -63,8 +63,10 @@
   .stk .sx{display:none;position:absolute;top:-2mm;right:-2mm;width:5mm;height:5mm;padding:0;border-radius:50%;border:0;background:#000b;color:#fff;font-size:3.4mm;line-height:1;cursor:pointer}
   .stk:hover .sx{display:block}
   .stk:hover{outline:.3mm dashed var(--accent)}
-  .sizetool{position:absolute;left:1.5mm;top:1mm;display:none;z-index:7}
-  .card:hover .sizetool{display:block}
+  .sizetool{position:absolute;left:1.5mm;top:1mm;display:none;gap:1mm;z-index:7}
+  .card:hover .sizetool{display:flex}
+  .sizetool>button.add:hover{background:#2fa84f;border-color:#2fa84f;color:#fff}
+  .sizetool>button.rm:hover{background:#e5484d;border-color:#e5484d;color:#fff}
   .sizetool>button{width:6mm;height:6mm;padding:0;border-radius:50%;border:.3mm solid #888;background:#fff;color:#222;font-size:3.4mm;line-height:1;cursor:pointer}
   .sizetool>button.own{background:var(--accent)}
   #tplMenu{position:fixed;z-index:60;display:none;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px;box-shadow:0 6px 24px #000a}
@@ -108,7 +110,10 @@
     .tabpanel{max-height:44vh;overflow-y:auto;padding:10px 12px;gap:10px}
     .grp{width:100%}
     .grp>select,.grp>button,.grp>label.btn{flex:1 1 auto}
-    #tpl,#paper,#orient{flex:1 1 100%}
+    #tpl,#paper,#orient{flex:1 1 100%;width:100%}
+    .grp>*{min-width:0;max-width:100%}
+    .tabpanel{overflow-x:hidden}
+    #custom{width:100%}
     button,label.btn,select,input[type=number],#allText{font-size:16px}
     #allText{width:100%}
     #capbar{width:100%}
@@ -505,6 +510,32 @@ function computeLayout() {
   $('layoutInfo').textContent = `${G.uniform ? `${G.cols}×${G.nrows} = ${G.n}` : G.n} por hoja (${G.o === 'p' ? 'vertical' : 'horizontal'})` + (anyFl ? ` · sangrado ${b} mm, separación ${g} mm` : '') + (G.over ? ' · ⚠ no cabe en esta hoja (usa una más grande)' : '');
 }
 
+// Quita una tarjeta: las siguientes suben un lugar y la cantidad de la hoja baja en una
+function removeCard(i) {
+  if (G.n <= 1) return;
+  if (slots[i] && !confirm('Esta tarjeta tiene una foto. ¿Quitarla de todos modos?')) return;
+  if (slots[i]) URL.revokeObjectURL(slots[i].url);
+  if (bgs[i].url) URL.revokeObjectURL(bgs[i].url);
+  slots.splice(i, 1); slots.push(null);
+  bgs.splice(i, 1); bgs.push({color: '#ffffff', img: null, url: null});
+  capts.splice(i, 1); capts.push('');
+  tk.splice(i, 1); tk.push(null);
+  $('maxCards').value = G.n - 1;
+  rebuild();
+}
+// Inserta una tarjeta vacía después de la i; si no cabe otra en la hoja, lo deshace
+function addCard(i) {
+  const prevN = G.n, prevMax = $('maxCards').value;
+  const pop = {s: slots.pop(), b: bgs.pop(), c: capts.pop(), t: tk.pop()};
+  slots.splice(i + 1, 0, null); bgs.splice(i + 1, 0, {color: '#ffffff', img: null, url: null}); capts.splice(i + 1, 0, ''); tk.splice(i + 1, 0, null);
+  if (prevMax) $('maxCards').value = prevN + 1;
+  rebuild();
+  if (G.n > prevN) { if (pop.s) URL.revokeObjectURL(pop.s.url); if (pop.b.url) URL.revokeObjectURL(pop.b.url); return; }
+  slots.splice(i + 1, 1); bgs.splice(i + 1, 1); capts.splice(i + 1, 1); tk.splice(i + 1, 1);
+  slots.push(pop.s); bgs.push(pop.b); capts.push(pop.c); tk.push(pop.t);
+  $('maxCards').value = prevMax; rebuild();
+  alert('No caben más tarjetas en esta hoja. Usa una hoja más grande, un margen menor o tarjetas más pequeñas.');
+}
 const tplMenu = document.createElement('div'); tplMenu.id = 'tplMenu'; document.body.appendChild(tplMenu);
 function showTplMenu(i, btn) {
   tplMenu.innerHTML = '';
@@ -563,7 +594,11 @@ function rebuild() {
     const st = document.createElement('div'); st.className = 'sizetool';
     const sb = document.createElement('button'); sb.textContent = '⤢'; sb.title = 'Tamaño / plantilla de esta tarjeta'; if (tk[i]) sb.classList.add('own');
     sb.onclick = e => { e.stopPropagation(); showTplMenu(i, sb); };
-    st.appendChild(sb); c.appendChild(st);
+    const xb = document.createElement('button'); xb.textContent = '✕'; xb.title = 'Quitar esta tarjeta'; xb.className = 'rm';
+    xb.onclick = e => { e.stopPropagation(); removeCard(i); };
+    const ab = document.createElement('button'); ab.textContent = '＋'; ab.title = 'Agregar una tarjeta después de esta'; ab.className = 'add';
+    ab.onclick = e => { e.stopPropagation(); addCard(i); };
+    st.append(sb, ab, xb); c.appendChild(st);
     tl.append(ci, ib, pb, rb, pm); c.appendChild(tl); c._ci = ci;
     sheet.appendChild(c); photoEls.push(p); cardEls.push(c); applyBg(i);
   }
@@ -928,6 +963,7 @@ help.innerHTML = `<div class="box"><button class="x" title="Cerrar">×</button><
 <li><b>Agrega fotos</b> con «Agregar fotos», soltándolas sobre la hoja o haciendo clic en un «+». «Foto en todas» repite la misma imagen en todas las tarjetas.</li>
 <li><b>Tomar foto:</b> «📷 Tomar foto» abre la cámara; cada captura va a la siguiente tarjeta libre.</li>
 <li><b>Cantidad:</b> el campo «Cantidad» limita cuántas tarjetas se colocan en la hoja (vacío = todas las que quepan). Las fotos de las tarjetas que sobran no se pierden.</li>
+<li><b>Agregar o quitar tarjetas:</b> pasa el mouse sobre una tarjeta; ＋ agrega una vacía a continuación (si cabe en la hoja) y ✕ la quita. Las siguientes suben un lugar y la «Cantidad» baja en uno; puedes volver a subirla desde ese campo.</li>
 <li><b>Reencuadra</b> arrastrando la foto dentro de su marco. Con el mouse encima: ↻ reemplaza, × quita.</li>
 <li><b>Cambia el fondo</b> de cada tarjeta (color, 🖼 imagen, ✦ predefinido) o el de todas con «Color a todas», «Imagen a todas» y «Fondos predefinidos».</li>
 <li><b>Pie de foto:</b> escribe en el marco; ajusta fuente, tamaño y color arriba. «Texto a todas» repite un mismo texto.</li>
