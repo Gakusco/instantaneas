@@ -59,6 +59,14 @@
   #ai .bar{height:8px;background:#3a3c42;border-radius:6px;overflow:hidden;margin:8px 0}
   #ai .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .4s}
   #ai input[type=text],#ai select{background:#3a3c42;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px;font:inherit}
+  #ai .anim{display:none;align-items:center;gap:14px;padding:10px 12px;border-radius:8px;margin:8px 0;
+    background:linear-gradient(110deg,#33353b 30%,#44464d 50%,#33353b 70%);background-size:200% 100%;animation:aishine 1.4s linear infinite}
+  #ai .anim.on{display:flex}
+  #ai .anim .pen{font-size:28px;display:inline-block;transform-origin:20% 90%;animation:aidraw 1s ease-in-out infinite alternate}
+  #ai .anim .t{display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--muted)}
+  #ai .anim b{color:var(--text);font-size:18px;font-variant-numeric:tabular-nums}
+  @keyframes aishine{to{background-position:-200% 0}}
+  @keyframes aidraw{from{transform:rotate(-25deg) translateX(-8px)}to{transform:rotate(15deg) translateX(8px)}}
   #ai .go{background:var(--accent);color:#111;border-color:var(--accent);font-weight:600}
   #help{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
   #help.open{display:flex}
@@ -275,6 +283,8 @@
     <label class="opt">Modelo <input type="text" id="aiModel" value="flux" style="width:90px"></label>
   </div>
   <div class="st" id="aiInfo"></div>
+  <div class="anim" id="aiAnim"><span class="pen">✏️</span>
+    <div class="t"><span>Esta imagen: <b id="aiTImg">0:00</b></span><span>Total: <b id="aiTAll">0:00</b></span></div></div>
   <div class="bar"><i id="aiBar"></i></div>
   <div class="st" id="aiMsg"></div>
   <div class="r"><button class="go" id="aiGo">Generar y colocar en las tarjetas</button><button id="aiCancel">Cancelar</button></div>
@@ -1183,9 +1193,13 @@ rebuild();
     if (!n) { $('aiMsg').textContent = 'No hay tarjetas vacías.'; return; }
     const style = $('aiStyle').value, model = $('aiModel').value.trim();
     busy = true; cancel = false; $('aiGo').disabled = true; $('aiCancel').textContent = 'Detener';
-    let done = 0;
+    let done = 0, tImg = Date.now();
+    const T0 = Date.now(), fmt = ms => { const t = Math.round(ms / 1000); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+    const tick = setInterval(() => { $('aiTImg').textContent = fmt(Date.now() - tImg); $('aiTAll').textContent = fmt(Date.now() - T0); }, 250);
+    $('aiAnim').classList.add('on'); $('aiBar').style.width = '0';
     try {
       for (let i = 0; i < n && !cancel; i++) {
+        tImg = Date.now();
         const idx = slots.slice(0, G.n).findIndex(s => !s);
         if (idx < 0) break;
         const it = G.items[idx] || {pw: 1, ph: 1}, k = 1024 / Math.max(it.pw, it.ph);
@@ -1198,6 +1212,7 @@ rebuild();
       }
       $('aiMsg').textContent = cancel ? `Detenido (${done} generadas).` : `Listo: ${done} imagen(es) colocadas ✨`;
     } catch (e) { $('aiMsg').textContent = 'Error: ' + e.message; }
+    clearInterval(tick); $('aiAnim').classList.remove('on');
     busy = false; $('aiGo').disabled = false; $('aiCancel').textContent = 'Cancelar';
   };
 })();
