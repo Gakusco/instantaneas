@@ -1,12 +1,12 @@
 # Fotos instantáneas → PDF
 
-Página web de un solo archivo (`instax-a4.html`) para acomodar fotos en formato Instax, Polaroid y otros tamaños sobre una hoja (A4 por defecto) y exportarlas a PDF listas para imprimir y recortar.
+Página web de un solo archivo (`index.html`) para acomodar fotos en formato Instax, Polaroid y otros tamaños sobre una hoja (A4 por defecto) y exportarlas a PDF listas para imprimir y recortar.
 
 Todo funciona en el navegador. Las fotos **no se suben a ningún servidor**.
 
 ## Uso rápido
 
-1. Abre `instax-a4.html` en un navegador moderno (Chrome, Edge, Firefox, Safari).
+1. Abre `index.html` en un navegador moderno (Chrome, Edge, Firefox, Safari).
 2. Elige la **plantilla** y el **tamaño de hoja**.
 3. Pulsa **Agregar fotos** (puedes seleccionar varias) o arrástralas sobre la hoja. Se rellenan los espacios libres en orden.
 4. Reencuadra cada foto arrastrándola dentro de su marco.
