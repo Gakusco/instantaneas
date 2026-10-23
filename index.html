@@ -48,6 +48,18 @@
   .cardtools .presetmenu .pm{width:9mm;height:9mm;border-radius:1mm;background-size:cover;background-position:center;padding:0}
   .hint{color:var(--muted);font-size:12px;padding:0 16px 14px;text-align:center}
   .drop{outline:3px dashed var(--accent);outline-offset:-6px}
+  #ai{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:51;padding:16px}
+  #ai.open{display:flex}
+  #ai .box{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 24px;width:min(480px,100%);max-height:90vh;overflow:auto}
+  #ai h2{margin:0 0 10px;font-size:18px}
+  #ai textarea{width:100%;min-height:70px;background:#3a3c42;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px;font:inherit;resize:vertical}
+  #ai .r{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+  #ai .x{position:absolute;top:8px;right:8px;padding:2px 10px;font-size:18px}
+  #ai .st{color:var(--muted);font-size:13px;min-height:1.4em}
+  #ai .bar{height:8px;background:#3a3c42;border-radius:6px;overflow:hidden;margin:8px 0}
+  #ai .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .4s}
+  #ai input[type=text],#ai select{background:#3a3c42;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px;font:inherit}
+  #ai .go{background:var(--accent);color:#111;border-color:var(--accent);font-weight:600}
   #help{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
   #help.open{display:flex}
   #help .box{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 24px;max-width:640px;max-height:90vh;overflow:auto}
@@ -156,6 +168,7 @@
     <div class="grp"><span class="gl">Agregar</span>
       <label class="btn">Agregar fotos<input type="file" id="multi" accept="image/*" multiple hidden></label>
       <button id="camBtn" title="Sacar una foto con la cámara (C)">📷 Tomar foto</button>
+      <button id="aiBtn" title="Generar imágenes con IA (Pollinations)">✨ Generar con IA</button>
       <label class="btn" title="Pone la misma foto en todas las tarjetas (F)">Foto en todas<input type="file" id="allPhoto" accept="image/*" hidden></label>
     </div>
     <div class="grp"><span class="gl">Hoja</span>
@@ -239,6 +252,34 @@
 </div>
 <main id="main"><div class="stage" id="stage"><div class="sheet guides" id="sheet"></div></div></main>
 <div class="hint">Arrastra la foto dentro del marco para reencuadrar · Pasa el mouse sobre una tarjeta para cambiar su fondo (color o imagen) · Puedes soltar varias imágenes sobre la hoja</div>
+<div id="ai"><div class="box">
+  <button class="x" id="aiX" title="Cerrar">×</button>
+  <h2>✨ Generar imágenes con IA</h2>
+  <div class="r" id="aiLogin">
+    <button id="aiConnect">🔐 Conectar con Pollinations</button>
+    <button id="aiLogout" style="display:none">Desconectar</button>
+    <span class="st" id="aiLoginSt"></span>
+  </div>
+  <textarea id="aiPrompt" placeholder="Describe la imagen. Ej: un gato astronauta flotando entre estrellas"></textarea>
+  <div class="r">
+    <label class="opt">Estilo
+      <select id="aiStyle">
+        <option value="">Libre</option>
+        <option value="high quality photo, natural light">Foto realista</option>
+        <option value="anime style illustration, vibrant colors">Anime</option>
+        <option value="watercolor painting, soft colors">Acuarela</option>
+        <option value="cute cartoon illustration, bold outlines, flat colors">Caricatura</option>
+        <option value="vintage polaroid photo, film grain, warm tones">Polaroid vintage</option>
+      </select></label>
+    <label class="opt">Cantidad <input type="number" id="aiN" min="1" max="30" value="1" style="width:64px"></label>
+    <label class="opt">Modelo <input type="text" id="aiModel" value="flux" style="width:90px"></label>
+  </div>
+  <div class="st" id="aiInfo"></div>
+  <div class="bar"><i id="aiBar"></i></div>
+  <div class="st" id="aiMsg"></div>
+  <div class="r"><button class="go" id="aiGo">Generar y colocar en las tarjetas</button><button id="aiCancel">Cancelar</button></div>
+  <div class="st">Se usa tu propia cuenta de Pollinations (consume tu saldo de pollen). Las imágenes se colocan en las tarjetas vacías con la proporción de la foto.</div>
+</div></div>
 <input type="file" id="single" accept="image/*" hidden>
 <input type="file" id="bgFile" accept="image/*" hidden>
 <input type="file" id="bgAllFile" accept="image/*" hidden>
@@ -1053,5 +1094,114 @@ document.addEventListener('keydown', e => {
 
 rebuild();
 </script>
+<script>
+// ---- Generación con IA (Pollinations, login OAuth + PKCE en ventana emergente, sin backend)
+(() => {
+  const APP_KEY = 'pk_mkzV8DF1tdQzKlL6';              // clave pública de la app (client_id)
+  const RURI = location.origin + location.pathname;
+  const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('polli-auth') : null;
+
+  // Si esta es la ventana emergente que vuelve del login, pasa el código a la ventana principal
+  const q = new URLSearchParams(location.search);
+  if (q.get('code') && q.get('state') && bc) {
+    bc.postMessage({code: q.get('code'), state: q.get('state')});
+    history.replaceState(null, '', location.pathname);
+    document.body.innerHTML = '<p style="padding:24px;font:16px sans-serif;color:#eee">Conectado. Puedes cerrar esta ventana.</p>';
+    setTimeout(() => window.close(), 300);
+    return;
+  }
+
+  const $ = id => document.getElementById(id);
+  const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  let pkce = null, cancel = false, busy = false;
+  const token = () => { try { return sessionStorage.getItem('ptoken') || ''; } catch (e) { return ''; } };
+  const emptySlots = () => slots.slice(0, G.n).filter(s => !s).length;
+
+  function ui() {
+    const t = token();
+    $('aiConnect').style.display = t ? 'none' : ''; $('aiLogout').style.display = t ? '' : 'none';
+    if (t) $('aiLoginSt').textContent = '✅ Conectado';
+    const e = emptySlots();
+    $('aiInfo').textContent = `Tarjetas vacías: ${e}` + (e ? '' : ' (vacía alguna para generar)');
+    $('aiN').max = Math.max(1, e); if (+$('aiN').value > e && e) $('aiN').value = e;
+  }
+  $('aiBtn').onclick = () => { ui(); $('ai').classList.add('open'); };
+  $('aiX').onclick = () => { if (!busy) $('ai').classList.remove('open'); };
+  $('aiCancel').onclick = () => { if (busy) { cancel = true; } else $('ai').classList.remove('open'); };
+  $('aiLogout').onclick = () => { try { sessionStorage.removeItem('ptoken'); } catch (e) {} $('aiLoginSt').textContent = ''; ui(); };
+  try { $('aiModel').value = localStorage.getItem('aiModel') || 'flux'; } catch (e) {}
+  $('aiModel').addEventListener('change', () => { try { localStorage.setItem('aiModel', $('aiModel').value.trim()); } catch (e) {} });
+
+  $('aiConnect').onclick = async () => {
+    const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
+    const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+    const state = crypto.randomUUID();
+    pkce = {verifier, state};
+    const url = 'https://enter.pollinations.ai/authorize?' + new URLSearchParams({
+      response_type: 'code', client_id: APP_KEY, redirect_uri: RURI, scope: 'usage', state,
+      code_challenge: challenge, code_challenge_method: 'S256'});
+    $('aiLoginSt').textContent = 'Autoriza en la ventana que se abrió…';
+    if (!window.open(url, 'pollilogin', 'width=520,height=720')) $('aiLoginSt').textContent = 'El navegador bloqueó la ventana emergente. Permítela e inténtalo de nuevo.';
+  };
+  if (bc) bc.onmessage = async ev => {
+    const m = ev.data || {};
+    if (!pkce || m.state !== pkce.state) return;
+    const v = pkce.verifier; pkce = null;
+    try {
+      const r = await fetch('https://enter.pollinations.ai/api/oauth/token', {
+        method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({grant_type: 'authorization_code', code: m.code, client_id: APP_KEY, redirect_uri: RURI, code_verifier: v})});
+      const j = await r.json();
+      if (!r.ok || !j.access_token) throw new Error(j.error_description || j.error || ('error ' + r.status));
+      sessionStorage.setItem('ptoken', j.access_token);
+      $('aiLoginSt').textContent = '✅ Conectado';
+    } catch (e) { $('aiLoginSt').textContent = 'No se pudo conectar: ' + e.message; }
+    ui();
+  };
+
+  async function gen(prompt, w, h, model) {
+    for (let a = 0; a < 4; a++) {
+      if (cancel) return null;
+      const seed = Math.floor(Math.random() * 1e6);
+      const u = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true` + (model ? '&model=' + encodeURIComponent(model) : '');
+      try {
+        const r = await fetch(u, {headers: {Authorization: 'Bearer ' + token()}});
+        if (r.ok && (r.headers.get('content-type') || '').startsWith('image')) return await r.blob();
+        if ([401, 402, 403].includes(r.status)) throw new Error(r.status === 401 ? 'sesión caducada, vuelve a conectar' : 'sin permiso o sin saldo de pollen (error ' + r.status + ')');
+      } catch (e) { if (/sesión|saldo/.test(e.message)) throw e; }
+      for (let s = 8; s > 0 && !cancel; s--) { $('aiMsg').textContent = `Reintentando en ${s}s…`; await sleep(1000); }
+    }
+    throw new Error('el servicio no respondió');
+  }
+
+  $('aiGo').onclick = async () => {
+    const p = $('aiPrompt').value.trim();
+    if (!token()) { $('aiMsg').textContent = 'Primero conecta tu cuenta de Pollinations.'; return; }
+    if (!p) { $('aiMsg').textContent = 'Escribe qué imagen quieres.'; return; }
+    const n = Math.min(+$('aiN').value || 1, emptySlots());
+    if (!n) { $('aiMsg').textContent = 'No hay tarjetas vacías.'; return; }
+    const style = $('aiStyle').value, model = $('aiModel').value.trim();
+    busy = true; cancel = false; $('aiGo').disabled = true; $('aiCancel').textContent = 'Detener';
+    let done = 0;
+    try {
+      for (let i = 0; i < n && !cancel; i++) {
+        const idx = slots.slice(0, G.n).findIndex(s => !s);
+        if (idx < 0) break;
+        const it = G.items[idx] || {pw: 1, ph: 1}, k = 1024 / Math.max(it.pw, it.ph);
+        const w = Math.max(256, Math.round(it.pw * k / 16) * 16), h = Math.max(256, Math.round(it.ph * k / 16) * 16);
+        $('aiMsg').textContent = `Generando ${i + 1} de ${n}…`;
+        const blob = await gen(style ? p + ', ' + style : p, w, h, model);
+        if (!blob) break;
+        await addFiles([new File([blob], 'ia-' + Date.now() + '.png', {type: blob.type || 'image/png'})]);
+        done++; $('aiBar').style.width = (done / n * 100) + '%'; ui();
+      }
+      $('aiMsg').textContent = cancel ? `Detenido (${done} generadas).` : `Listo: ${done} imagen(es) colocadas ✨`;
+    } catch (e) { $('aiMsg').textContent = 'Error: ' + e.message; }
+    busy = false; $('aiGo').disabled = false; $('aiCancel').textContent = 'Cancelar';
+  };
+})();
+</script>
+
 </body>
 </html>
