@@ -61,7 +61,10 @@
   .stk{position:absolute;z-index:6;cursor:grab;touch-action:none;user-select:none}
   .stk img{width:100%;height:100%;display:block;pointer-events:none;filter:drop-shadow(0 .3mm .5mm #0005)}
   .stk .sx{display:none;position:absolute;top:-2mm;right:-2mm;width:5mm;height:5mm;padding:0;border-radius:50%;border:0;background:#000b;color:#fff;font-size:3.4mm;line-height:1;cursor:pointer}
-  .stk:hover .sx{display:block}
+  .stk:hover .sx,.stk.sel .sx{display:block}
+  .sh{display:none;position:absolute;right:-2.5mm;bottom:-2.5mm;width:6mm;height:6mm;border-radius:50%;background:var(--accent);border:.4mm solid #fff;cursor:nwse-resize;touch-action:none}
+  .stk:hover .sh,.stk.sel .sh{display:block}
+  @media (pointer:coarse){.stk .sx,.stk .sh{width:8mm;height:8mm}.stk .sx{font-size:5mm}}
   .stk:hover{outline:.3mm dashed var(--accent)}
   .sizetool{position:absolute;left:1.5mm;top:1mm;display:none;gap:1mm;z-index:7}
   .card:hover .sizetool{display:flex}
@@ -230,7 +233,7 @@
       <select id="stkCat" title="Categoría"></select><span id="stkList"></span>
       <button id="stkClear">Quitar stickers</button>
     </div>
-    <div class="note">Arrastra un sticker a la hoja (o haz clic para ponerlo al centro) · rueda del mouse = tamaño.</div>
+    <div class="note">Arrastra un sticker a la hoja (o haz clic para ponerlo al centro) · rueda del mouse, pellizco con dos dedos o el punto naranja de la esquina = tamaño.</div>
   </div>
 </section>
 </div>
@@ -907,31 +910,50 @@ function renderStickers() {
   sheet.querySelectorAll('.stk').forEach(e => e.remove());
   stickers.forEach(st => {
     const d = document.createElement('div'); d.className = 'stk';
-    Object.assign(d.style, {left: st.x + 'mm', top: st.y + 'mm', width: st.s + 'mm', height: st.s + 'mm'});
+    const place = () => Object.assign(d.style, {left: st.x + 'mm', top: st.y + 'mm', width: st.s + 'mm', height: st.s + 'mm'});
+    const resize = n => { n = Math.min(80, Math.max(6, n)); st.x -= (n - st.s) / 2; st.y -= (n - st.s) / 2; st.s = n; place(); };
+    place();
     d.innerHTML = `<img src="${STICKERS[st.k].url}" alt="${STICKERS[st.k].name}">`;
     const x = document.createElement('button'); x.className = 'sx'; x.textContent = '×'; x.title = 'Quitar sticker';
     x.addEventListener('pointerdown', e => e.stopPropagation());
     x.onclick = () => { stickers.splice(stickers.indexOf(st), 1); d.remove(); };
-    d.appendChild(x);
-    let sx, sy, ox, oy;
-    d.addEventListener('pointerdown', e => { d.setPointerCapture(e.pointerId); sx = e.clientX; sy = e.clientY; ox = st.x; oy = st.y; d.style.cursor = 'grabbing'; });
-    d.addEventListener('pointermove', e => {
-      if (!d.hasPointerCapture(e.pointerId)) return;
+    // asa de la esquina: arrastrarla cambia el tamaño (útil en pantallas táctiles)
+    const h = document.createElement('div'); h.className = 'sh'; h.title = 'Arrastra para cambiar el tamaño';
+    let hs, hd;
+    h.addEventListener('pointerdown', e => { e.stopPropagation(); h.setPointerCapture(e.pointerId); hs = st.s; hd = Math.hypot(e.clientX, e.clientY); h._o = [e.clientX, e.clientY]; });
+    h.addEventListener('pointermove', e => {
+      if (!h.hasPointerCapture(e.pointerId)) return;
       const mm = G.W / sheet.getBoundingClientRect().width;
+      resize(hs + ((e.clientX - h._o[0]) + (e.clientY - h._o[1])) * mm / 2 * 2 / 1.4); // ≈ arrastre en diagonal
+      hs = st.s; h._o = [e.clientX, e.clientY];
+    });
+    d.append(x, h);
+    const ptr = new Map(); let ox, oy, sx, sy, pd, ps;
+    d.addEventListener('pointerdown', e => {
+      sheet.querySelectorAll('.stk.sel').forEach(o => o.classList.remove('sel')); d.classList.add('sel');
+      d.setPointerCapture(e.pointerId); ptr.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptr.size === 1) { sx = e.clientX; sy = e.clientY; ox = st.x; oy = st.y; d.style.cursor = 'grabbing'; }
+      else if (ptr.size === 2) { const [a, c] = [...ptr.values()]; pd = Math.hypot(a[0] - c[0], a[1] - c[1]) || 1; ps = st.s; }
+    });
+    d.addEventListener('pointermove', e => {
+      if (!ptr.has(e.pointerId)) return;
+      ptr.set(e.pointerId, [e.clientX, e.clientY]);
+      const mm = G.W / sheet.getBoundingClientRect().width;
+      if (ptr.size >= 2) { // pellizco con dos dedos
+        const [a, c] = [...ptr.values()]; resize(ps * Math.hypot(a[0] - c[0], a[1] - c[1]) / pd); return;
+      }
       st.x = Math.min(G.W - st.s / 2, Math.max(-st.s / 2, ox + (e.clientX - sx) * mm));
       st.y = Math.min(G.H - st.s / 2, Math.max(-st.s / 2, oy + (e.clientY - sy) * mm));
       d.style.left = st.x + 'mm'; d.style.top = st.y + 'mm';
     });
-    d.addEventListener('pointerup', () => d.style.cursor = 'grab');
-    d.addEventListener('wheel', e => {
-      e.preventDefault();
-      const n = Math.min(80, Math.max(6, st.s * (e.deltaY < 0 ? 1.08 : 1 / 1.08)));
-      st.x -= (n - st.s) / 2; st.y -= (n - st.s) / 2; st.s = n;
-      Object.assign(d.style, {left: st.x + 'mm', top: st.y + 'mm', width: n + 'mm', height: n + 'mm'});
-    }, {passive: false});
+    const up = e => { ptr.delete(e.pointerId); d.style.cursor = 'grab';
+      if (ptr.size === 1) { const [p] = [...ptr.values()]; sx = p[0]; sy = p[1]; ox = st.x; oy = st.y; } };
+    d.addEventListener('pointerup', up); d.addEventListener('pointercancel', up);
+    d.addEventListener('wheel', e => { e.preventDefault(); resize(st.s * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, {passive: false});
     sheet.appendChild(d);
   });
 }
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.stk')) document.querySelectorAll('.stk.sel').forEach(o => o.classList.remove('sel')); });
 Object.keys(STK_CATS).forEach(c => $('stkCat').add(new Option(c, c)));
 function renderTray() {
   $('stkList').innerHTML = '';
