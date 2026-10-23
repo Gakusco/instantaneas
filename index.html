@@ -30,16 +30,25 @@
   .tools{position:absolute;top:1mm;right:1mm;display:none;gap:1mm}
   .photo.filled:hover .tools{display:flex}
   .tools button{padding:0;width:6mm;height:6mm;font-size:3.6mm;line-height:1;border-radius:50%;background:#000b;border:0;color:#fff}
-  .cardtools{position:absolute;right:1.5mm;bottom:1.5mm;display:none;gap:1mm;align-items:center}
+  .cardtools{position:absolute;right:1.5mm;bottom:1mm;display:none;gap:1mm;align-items:center;z-index:5}
   .card:hover .cardtools{display:flex}
   .cardtools button,.cardtools input{width:6mm;height:6mm;padding:0;border-radius:50%;border:.3mm solid #888;background:#fff;color:#222;font-size:3.4mm;line-height:1;cursor:pointer}
   .cardtools input{padding:.2mm}
   input[type=color]{cursor:pointer}
   .sheet.frameless.guides .card::after{content:'';position:absolute;inset:0;border:.25mm dashed #ff7a3d;pointer-events:none;z-index:3}
   .sheet.frameless .cardtools{display:none!important}
+  #capbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%}
+  #allText{background:#3a3c42;color:var(--text);border:1px solid var(--line);padding:8px 12px;border-radius:6px;font:inherit;width:210px}
+  .cap{position:absolute;background:transparent;border:0;outline:0;padding:0;margin:0;box-sizing:border-box;text-align:center;color:#222;z-index:2}
+  .cap::placeholder{color:transparent}
+  .card:hover .cap::placeholder{color:#aaa}
+  .sheet.frameless .cap{display:none}
   .hint{color:var(--muted);font-size:12px;padding:0 16px 14px;text-align:center}
   .drop{outline:3px dashed var(--accent);outline-offset:-6px}
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Permanent+Marker&display=swap" rel="stylesheet">
 </head>
 <body>
 <header>
@@ -55,7 +64,8 @@
   <label class="opt">Margen mín. <input type="number" id="margin" value="8" min="0" max="30" step="1"> mm</label>
   <label class="opt"><input type="checkbox" id="guides" checked> Líneas de corte</label>
   <label class="opt">Fondo <input type="color" id="allColor" value="#ffffff"></label>
-  <button id="applyAll" title="Aplica este color a todos los marcos">Aplicar a todas</button>
+  <button id="applyAll" title="Aplica este color a todos los marcos (quita las imágenes de fondo)">Color a todas</button>
+  <button id="applyAllImg" title="Usa la misma imagen de fondo en todos los marcos">Imagen a todas</button>
   <label class="opt"><input type="checkbox" id="frameless"> Sin marco</label>
   <label class="opt">Sangrado <input type="number" id="bleed" value="1" min="0" max="5" step=".5"> mm</label>
   <label class="opt">Separación <input type="number" id="gap" value="4" min="0" max="20" step=".5"> mm</label>
@@ -73,10 +83,34 @@
     <span class="info">Borde sup.</span><input type="number" id="c_py" step=".1">
   </div>
 </header>
+<div id="capbarWrap" style="background:var(--panel);padding:0 16px 12px;border-bottom:1px solid var(--line)">
+<div id="capbar">
+  <span class="info">Pie de foto:</span>
+  <select id="capFont" title="Fuente">
+    <option value="hand">Manuscrita</option>
+    <option value="marker">Marcador</option>
+    <option value="sans">Sencilla</option>
+    <option value="serif">Serif</option>
+    <option value="mono">Máquina de escribir</option>
+  </select>
+  <label class="opt">Tamaño <input type="number" id="capSize" value="5.5" min="2" max="15" step=".5"> mm</label>
+  <label class="opt"><input type="checkbox" id="capAuto" checked> Color automático</label>
+  <input type="color" id="capColor" value="#222222" title="Color del texto (si el automático está desactivado)">
+  <select id="capAlign" title="Alineación">
+    <option value="center">Centrado</option>
+    <option value="left">Izquierda</option>
+    <option value="right">Derecha</option>
+  </select>
+  <input type="text" id="allText" placeholder="Mismo texto para todas">
+  <button id="applyAllText" title="Escribe el texto en todas las tarjetas (vacío = borrar todos)">Texto a todas</button>
+  <span class="info">Escribe el texto de cada foto directamente en su marco.</span>
+</div>
+</div>
 <main id="main"><div class="stage" id="stage"><div class="sheet guides" id="sheet"></div></div></main>
 <div class="hint">Arrastra la foto dentro del marco para reencuadrar · Pasa el mouse sobre una tarjeta para cambiar su fondo (color o imagen) · Puedes soltar varias imágenes sobre la hoja</div>
 <input type="file" id="single" accept="image/*" hidden>
 <input type="file" id="bgFile" accept="image/*" hidden>
+<input type="file" id="bgAllFile" accept="image/*" hidden>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
@@ -98,11 +132,44 @@ let G = {};                          // geometría activa
 const slots = Array(MAXN).fill(null); // {img,url,fx,fy}
 let photoEls = [], cardEls = [], replaceIdx = null, bgIdx = null;
 const bgs = Array.from({length: MAXN}, () => ({color: '#ffffff', img: null, url: null})); // fondo por tarjeta
+const capts = Array(MAXN).fill('');   // texto de pie por tarjeta
+const FONTS = {
+  hand:   "'Caveat','Segoe Print','Bradley Hand',cursive",
+  marker: "'Permanent Marker','Marker Felt',cursive",
+  sans:   "system-ui,'Segoe UI',Arial,sans-serif",
+  serif:  "Georgia,'Times New Roman',serif",
+  mono:   "'Courier New',monospace"
+};
+function capStyle() { return {family: FONTS[$('capFont').value], size: Math.max(1, parseFloat($('capSize').value) || 5.5), align: $('capAlign').value}; }
+function capFont(ppm) { const st = capStyle(); return `${st.size * ppm}px ${st.family}`; }
+function bgLum(i) { // luminosidad 0..1 del fondo de la tarjeta (promedio si es imagen)
+  const b = bgs[i];
+  if (b.img) {
+    if (b._lumImg !== b.img) {
+      const c = document.createElement('canvas'); c.width = c.height = 8;
+      const x = c.getContext('2d'); x.drawImage(b.img, 0, 0, 8, 8);
+      const d = x.getImageData(0, 0, 8, 8).data; let t = 0;
+      for (let k = 0; k < d.length; k += 4) t += .299 * d[k] + .587 * d[k+1] + .114 * d[k+2];
+      b._lum = t / 64 / 255; b._lumImg = b.img;
+    }
+    return b._lum;
+  }
+  const h = b.color;
+  return (.299 * parseInt(h.slice(1,3), 16) + .587 * parseInt(h.slice(3,5), 16) + .114 * parseInt(h.slice(5,7), 16)) / 255;
+}
+function capColor(i) { return $('capAuto').checked ? (bgLum(i) < .5 ? '#ffffff' : '#222222') : $('capColor').value; }
+function applyCap(i) {
+  const c = cardEls[i]; if (!c || !c._cap) return;
+  const st = capStyle(), e = c._cap.style;
+  e.fontFamily = st.family; e.fontSize = st.size + 'mm'; e.textAlign = st.align; e.color = capColor(i);
+}
+function applyAllCaps() { cardEls.forEach((_, i) => applyCap(i)); }
 function applyBg(i) {
   const c = cardEls[i], b = bgs[i]; if (!c) return;
   c.style.backgroundColor = b.color;
   c.style.backgroundImage = b.url ? `url(${b.url})` : 'none';
   c.style.backgroundSize = 'cover'; c.style.backgroundPosition = 'center';
+  applyCap(i);
 }
 function refreshBgs() { cardEls.forEach((c, i) => { applyBg(i); c._ci.value = bgs[i].color; }); }
 
@@ -163,6 +230,7 @@ function rebuild() {
   computeLayout();
   sheet.innerHTML = ''; photoEls = []; cardEls = [];
   sheet.classList.toggle('frameless', G.fl);
+  $('capbarWrap').style.display = G.fl ? 'none' : 'block';
   sheet.style.width = G.W + 'mm'; sheet.style.height = G.H + 'mm';
   for (let i = 0; i < G.n; i++) {
     const c = document.createElement('div'); c.className = 'card';
@@ -172,6 +240,10 @@ function rebuild() {
     Object.assign(p.style, {left: G.px + 'mm', top: G.py + 'mm', width: G.pw + 'mm', height: G.ph + 'mm'});
     p.addEventListener('click', () => { if (!slots[i]) { replaceIdx = i; single.click(); } });
     c.appendChild(p);
+    const cap = document.createElement('input'); cap.type = 'text'; cap.className = 'cap'; cap.placeholder = 'Escribe un texto…'; cap.value = capts[i];
+    Object.assign(cap.style, {left: G.px + 'mm', top: (G.py + G.ph) + 'mm', width: G.pw + 'mm', height: Math.max(0, G.ch - G.py - G.ph) + 'mm'});
+    cap.addEventListener('input', () => { capts[i] = cap.value; });
+    c.appendChild(cap); c._cap = cap;
     const tl = document.createElement('div'); tl.className = 'cardtools';
     const ci = document.createElement('input'); ci.type = 'color'; ci.title = 'Color de fondo'; ci.value = bgs[i].color;
     ci.addEventListener('input', () => { bgs[i].color = ci.value; applyBg(i); });
@@ -262,6 +334,20 @@ $('bgFile').addEventListener('change', async e => {
   if (s) { if (bgs[bgIdx].url) URL.revokeObjectURL(bgs[bgIdx].url); bgs[bgIdx].img = s.img; bgs[bgIdx].url = s.url; applyBg(bgIdx); }
   bgIdx = null;
 });
+['capFont','capSize','capAuto','capColor','capAlign'].forEach(id => $(id).addEventListener('input', applyAllCaps));
+$('applyAllText').addEventListener('click', () => {
+  capts.fill($('allText').value);
+  cardEls.forEach((c, i) => { c._cap.value = capts[i]; });
+});
+$('applyAllImg').addEventListener('click', () => $('bgAllFile').click());
+$('bgAllFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const s = await loadFile(f); if (!s) return;
+  bgs.forEach(b => { if (b.url) URL.revokeObjectURL(b.url); b.img = s.img; b.url = URL.createObjectURL(f); });
+  URL.revokeObjectURL(s.url);
+  refreshBgs();
+});
 $('applyAll').addEventListener('click', () => {
   const col = $('allColor').value;
   bgs.forEach(b => { if (b.url) URL.revokeObjectURL(b.url); b.color = col; b.img = null; b.url = null; });
@@ -302,10 +388,11 @@ function fit() {
 window.addEventListener('resize', fit);
 
 // Exportar PDF
-$('export').addEventListener('click', () => {
+$('export').addEventListener('click', async () => {
   if (!window.jspdf) { alert('No se pudo cargar jsPDF (se necesita conexión a internet).'); return; }
   const doc = new window.jspdf.jsPDF({unit: 'mm', format: [paperDims().w, paperDims().h], orientation: G.o === 'p' ? 'portrait' : 'landscape'});
   const guides = $('guides').checked, PPM = 12; // ~305 dpi
+  if (!G.fl && capts.slice(0, G.n).some(Boolean)) { try { await document.fonts.load(capFont(PPM), 'Aa'); } catch (e) {} }
   for (let i = 0; i < G.n; i++) {
     const x = G.mx + (i % G.cols) * (G.cw + G.g), y = G.my + Math.floor(i / G.cols) * (G.ch + G.g), s = slots[i];
     const b = G.fl ? {color: '#ffffff', img: null} : bgs[i];
@@ -317,6 +404,14 @@ $('export').addEventListener('click', () => {
       doc.addImage(bc.toDataURL('image/jpeg', .9), 'JPEG', x, y, G.cw, G.ch);
     }
     if (guides && !G.fl) { doc.setDrawColor(190); doc.setLineWidth(.15); doc.rect(x, y, G.cw, G.ch); }
+    const txt = capts[i], bh = G.ch - G.py - G.ph;
+    if (txt && !G.fl && bh > 1) { // pie de foto dibujado como imagen para respetar la fuente
+      const CW = Math.round(G.pw * PPM), CH = Math.round(bh * PPM), cc = document.createElement('canvas'); cc.width = CW; cc.height = CH;
+      const cx = cc.getContext('2d'), al = capStyle().align;
+      cx.font = capFont(PPM); cx.fillStyle = capColor(i); cx.textBaseline = 'middle'; cx.textAlign = al;
+      cx.fillText(txt, al === 'left' ? 0 : al === 'right' ? CW : CW / 2, CH / 2);
+      doc.addImage(cc.toDataURL('image/png'), 'PNG', x + G.px, y + G.py + G.ph, G.pw, bh);
+    }
     if (!s) continue;
     const W = Math.round(G.pw * PPM), H = Math.round(G.ph * PPM);
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
