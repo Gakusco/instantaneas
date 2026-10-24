@@ -170,6 +170,8 @@
   <h1><img src="./favicon.svg" alt="" class="logo">Fotos instantáneas <span class="h1b">→ PDF</span></h1>
   <span class="grow"></span>
   <button id="helpBtn" title="Ayuda y atajos (F1 o ?)"><span class="hl">¿Necesitas ayuda?</span><span class="hs">?</span></button>
+  <button id="expBtn" title="Descarga un archivo de respaldo con todo tu trabajo">💾 Respaldo</button>
+  <label class="btn" title="Carga un archivo de respaldo (reemplaza lo actual)">📂 Importar<input type="file" id="impFile" accept=".json,application/json" hidden></label>
   <button id="resetAll" title="Borra todo y deja la página como al inicio">🗑 Restablecer todo</button>
   <button class="primary" id="export">⬇ Descargar PDF</button>
   <button id="toggleTools" title="Ocultar o mostrar las herramientas">▲ Ocultar</button>
@@ -1266,6 +1268,33 @@ rebuild();
     }
     rebuild(); refreshBgs();
   }
+  const toData = blob => new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); });
+  const urlData = async url => toData(await (await fetch(url)).blob());
+  $('expBtn').addEventListener('click', async () => {
+    const m = snapshot(), out = {...m, app: 'instantaneas', slots: [], bgs: []};
+    for (const x of m.slots) out.slots.push(x ? {data: await urlData(x.url), fx: x.fx, fy: x.fy} : null);
+    for (const b of m.bgs) out.bgs.push(b.url ? {color: b.color, data: await urlData(b.url)} : {color: b.color});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out)], {type: 'application/json'}));
+    a.download = 'instantaneas-respaldo-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $('impFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    if (!confirm('Importar este respaldo reemplazará todo lo que tienes ahora. ¿Continuar?')) return;
+    try {
+      const j = JSON.parse(await f.text());
+      if (j.app !== 'instantaneas' || j.v !== 1) throw new Error('archivo no válido');
+      ready = false;
+      await tx('kv', 'readwrite', s => s.clear()); await tx('blobs', 'readwrite', s => s.clear());
+      let n = 0; const put = async d => { const id = 'i' + (n++), bl = await (await fetch(d)).blob(); await tx('blobs', 'readwrite', s => s.put(bl, id)); return id; };
+      const st = {...j, slots: [], bgs: []}; delete st.app;
+      for (const x of j.slots) st.slots.push(x ? {id: await put(x.data), fx: x.fx, fy: x.fy} : null);
+      for (const b of j.bgs) st.bgs.push(b.data ? {color: b.color, id: await put(b.data)} : {color: b.color});
+      await tx('kv', 'readwrite', s => s.put(st, 'state'));
+      location.reload();
+    } catch (err) { ready = true; alert('No se pudo importar: ' + err.message); }
+  });
   $('resetAll').addEventListener('click', async () => {
     if (!confirm('¿Borrar todo (fotos, fondos, textos, stickers y ajustes) y dejar la página como al inicio?')) return;
     ready = false;
@@ -1275,6 +1304,7 @@ rebuild();
   (async () => {
     try { await restore(); } catch (e) { console.warn('No se pudo restaurar', e); }
     ready = true;
+    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
     setInterval(save, 2000);
     addEventListener('pagehide', save);
   })();
