@@ -1304,7 +1304,6 @@ rebuild();
   (async () => {
     try { await restore(); } catch (e) { console.warn('No se pudo restaurar', e); }
     ready = true;
-    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
     setInterval(save, 2000);
     addEventListener('pagehide', save);
   })();
