@@ -150,6 +150,15 @@
   .hole{position:absolute;border-radius:50%;background:#fff;border:.25mm dashed #999;z-index:3;pointer-events:none}
   .fold{position:absolute;top:0;bottom:0;border-left:.3mm dashed #fff;mix-blend-mode:difference;display:none;z-index:3;pointer-events:none}
   .sheet.guides .fold{display:block}
+  .rsel{display:inline-block;position:relative}
+  .rsel>button{display:flex;align-items:center;gap:10px;justify-content:space-between;min-width:150px;text-align:left}
+  .rsel>button:after{content:'▾';opacity:.7}
+  .rpanel{position:fixed;z-index:1000;background:#3a3c42;border:1px solid var(--line);border-radius:6px;max-height:70vh;overflow:auto;box-shadow:0 6px 20px #0008;padding:4px;display:none}
+  .rpanel.open{display:block}
+  .rpanel .ro{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:4px;cursor:pointer;color:var(--text);white-space:nowrap}
+  .rpanel .ro:hover,.rpanel .ro.on{background:#1a66d6}
+  .rpanel .rth{width:64px;height:40px;border-radius:4px;background-size:cover;background-position:center;flex:none;border:1px solid #fff3}
+  .rpanel .rf{font-size:22px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -751,6 +760,38 @@ $('presetAll').addEventListener('change', async e => {
   const k = e.target.value; if (!k) return; e.target.value = '';
   for (let i = 0; i < MAXN; i++) await applyPreset(i, k);
 });
+
+// Listas desplegables con vista previa (miniatura de fondo / tipografía real)
+function richSelect(sel, opts) {
+  sel.style.display = 'none';
+  const w = document.createElement('div'); w.className = 'rsel';
+  const b = document.createElement('button'); b.type = 'button'; b.title = sel.title;
+  const p = document.createElement('div'); p.className = 'rpanel';
+  sel.after(w); w.appendChild(b); document.body.appendChild(p);
+  const sync = () => { b.textContent = sel.options[sel.selectedIndex].textContent; b.style.fontFamily = opts.btnFont ? opts.btnFont(sel.value) : ''; };
+  [...sel.options].forEach(o => {
+    const r = document.createElement('div'); r.className = 'ro'; r.dataset.v = o.value;
+    const pv = opts.preview(o.value); if (pv) r.appendChild(pv);
+    const t = document.createElement('span'); t.textContent = o.textContent; if (opts.font) { t.className = 'rf'; t.style.fontFamily = opts.font(o.value); }
+    r.appendChild(t);
+    r.onclick = () => { p.classList.remove('open'); sel.value = o.value; sel.dispatchEvent(new Event('input', {bubbles: true})); sel.dispatchEvent(new Event('change', {bubbles: true})); sync(); };
+    p.appendChild(r);
+  });
+  b.onclick = e => {
+    e.stopPropagation();
+    if (p.classList.toggle('open')) {
+      const q = b.getBoundingClientRect();
+      p.style.left = q.left + 'px'; p.style.top = (q.bottom + 2) + 'px'; p.style.minWidth = q.width + 'px';
+      p.style.maxHeight = Math.max(120, innerHeight - q.bottom - 12) + 'px';
+      p.querySelectorAll('.ro').forEach(r => r.classList.toggle('on', r.dataset.v === sel.value));
+    }
+  };
+  document.addEventListener('click', () => p.classList.remove('open'));
+  addEventListener('resize', () => p.classList.remove('open'));
+  sync();
+}
+richSelect($('presetAll'), {preview: k => { if (!k) return null; const d = document.createElement('div'); d.className = 'rth'; d.style.backgroundImage = `url(${presetThumb(k)})`; return d; }});
+richSelect($('capFont'), {preview: () => null, font: k => FONTS[k], btnFont: k => FONTS[k]});
 $('applyAllImg').addEventListener('click', () => $('bgAllFile').click());
 $('bgAllFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = '';
