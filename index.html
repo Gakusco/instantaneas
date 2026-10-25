@@ -275,6 +275,14 @@
 <div id="ai"><div class="box">
   <button class="x" id="aiX" title="Cerrar">×</button>
   <h2>✨ Generar imágenes con IA</h2>
+  <div class="r">
+    <label class="opt">Motor <select id="aiEngine"><option value="polli">Pollinations</option><option value="local">IA local (VPN)</option></select></label>
+  </div>
+  <div class="r" id="aiLocal" style="display:none">
+    <label class="opt">URL <input type="text" id="aiLocalUrl" style="width:230px" placeholder="https://mi-pc.tailnet.ts.net:8188"></label>
+    <button id="aiLocalTest">Probar</button>
+    <span class="st" id="aiLocalSt"></span>
+  </div>
   <div class="r" id="aiLogin">
     <button id="aiConnect">🔐 Conectar con Pollinations</button>
     <button id="aiLogout" style="display:none">Desconectar</button>
@@ -1333,11 +1341,35 @@ rebuild();
   const token = () => { try { return sessionStorage.getItem('ptoken') || ''; } catch (e) { return ''; } };
   const emptySlots = () => slots.slice(0, G.n).filter(s => !s).length;
 
+  // Motor: Pollinations o IA local (servidor propio detrás de una VPN)
+  const lget = (k, d = '') => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
+  const lset = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const isLocal = () => $('aiEngine').value === 'local';
+  const localBase = () => $('aiLocalUrl').value.trim().replace(/\/+$/, '');
+  $('aiEngine').value = lget('aiEngine', 'polli'); $('aiLocalUrl').value = lget('aiLocalUrl');
+  $('aiEngine').onchange = () => { lset('aiEngine', $('aiEngine').value); ui(); };
+  $('aiLocalUrl').onchange = () => lset('aiLocalUrl', $('aiLocalUrl').value.trim());
+  // Enlace de configuración: https://…/#ia=https://mi-pc.tailnet.ts.net:8188
+  { const m = location.hash.match(/^#ia=(.+)$/);
+    if (m) { const u = decodeURIComponent(m[1]).trim().replace(/\/+$/, ''); if (/^https?:\/\//.test(u)) { lset('aiLocalUrl', u); lset('aiEngine', 'local'); $('aiLocalUrl').value = u; $('aiEngine').value = 'local'; }
+      history.replaceState(null, '', location.pathname + location.search); } }
+  $('aiLocalTest').onclick = async () => {
+    $('aiLocalSt').textContent = 'Probando…';
+    try {
+      const r = await fetch(localBase() + '/health');
+      if (!r.ok) throw new Error('error ' + r.status);
+      $('aiLocalSt').textContent = '✅ ' + (await r.json()).gpu;
+    } catch (e) { $('aiLocalSt').textContent = '❌ ' + (e.message === 'Failed to fetch' ? 'sin conexión (¿VPN activa, servidor encendido, URL https?)' : e.message); }
+  };
+
   function ui() {
-    const t = token();
+    const t = token(), loc = isLocal();
+    $('aiLocal').style.display = loc ? '' : 'none'; $('aiLogin').style.display = loc ? 'none' : '';
+    $('aiModel').parentElement.style.display = loc ? 'none' : '';
     $('aiConnect').style.display = t ? 'none' : ''; $('aiLogout').style.display = t ? '' : 'none';
     if (t) $('aiLoginSt').textContent = '✅ Conectado';
-    $('aiMode').textContent = t ? '' : 'Sin iniciar sesión: modo gratuito, 1 imagen cada ~45 s y calidad menor. Conecta tu cuenta para ir más rápido.';
+    $('aiMode').textContent = loc ? 'IA local: genera en tu propio PC por VPN (~10-20 s por imagen).'
+      : t ? '' : 'Sin iniciar sesión: modo gratuito, 1 imagen cada ~45 s y calidad menor. Conecta tu cuenta para ir más rápido.';
     const e = emptySlots();
     $('aiInfo').textContent = `Tarjetas vacías: ${e}` + (e ? '' : ' (vacía alguna para generar)');
     $('aiN').max = Math.max(1, e); if (+$('aiN').value > e && e) $('aiN').value = e;
@@ -1380,6 +1412,17 @@ rebuild();
     for (let t = secs; t > 0 && !cancel; t--) { $('aiMsg').textContent = `${label} ${t}s ⏳`; await sleep(1000); }
   }
   async function gen(prompt, w, h, model) {
+    if (isLocal()) {
+      for (let a = 0; a < 3; a++) {
+        if (cancel) return null;
+        try {
+          const r = await fetch(`${localBase()}/image/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${Math.floor(Math.random() * 1e6)}`);
+          if (r.ok && (r.headers.get('content-type') || '').startsWith('image')) return await r.blob();
+        } catch (e) {}
+        await wait(3, 'Sin respuesta de tu PC (¿VPN?), reintento en');
+      }
+      throw new Error('tu PC no respondió: revisa la VPN y que el servidor esté encendido');
+    }
     const anon = !token();
     for (let a = 0; a < 5; a++) {
       if (cancel) return null;
@@ -1420,7 +1463,7 @@ rebuild();
         if (!blob) break;
         await addFiles([new File([blob], 'ia-' + Date.now() + '.png', {type: blob.type || 'image/png'})]);
         done++; $('aiBar').style.width = (done / n * 100) + '%'; ui();
-        if (!token() && i < n - 1 && !cancel) await wait(46, 'Esperando el turno gratuito…');
+        if (!isLocal() && !token() && i < n - 1 && !cancel) await wait(46, 'Esperando el turno gratuito…');
       }
       $('aiMsg').textContent = cancel ? `Detenido (${done} generadas).` : `Listo: ${done} imagen(es) colocadas ✨`;
     } catch (e) { $('aiMsg').textContent = 'Error: ' + e.message; }

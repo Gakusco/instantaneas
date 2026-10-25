@@ -136,3 +136,7 @@ Todo está en el mismo archivo. Para agregar tamaños, edita estos objetos dentr
 - [jsPDF](https://github.com/parallax/jsPDF): licencia MIT.
 - Instax es marca de Fujifilm y Polaroid es marca de Polaroid. Se nombran solo para indicar el tamaño de formato. Este proyecto no está afiliado ni respaldado por ellas.
 - Los derechos de las fotos que cargues pertenecen a sus autores.
+
+## IA local por VPN
+
+Además de Pollinations, el motor **IA local (VPN)** genera las imágenes en un servidor propio (ver `ia-local`). Indica la URL HTTPS del servidor y su token; se guardan solo en tu navegador.
