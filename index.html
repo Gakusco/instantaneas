@@ -30,6 +30,7 @@
   .tools{position:absolute;top:1mm;right:1mm;display:none;gap:1mm}
   .photo.filled:hover .tools{display:flex}
   .tools button{padding:0;width:6mm;height:6mm;font-size:3.6mm;line-height:1;border-radius:50%;background:#000b;border:0;color:#fff}
+  .tools button.own{background:var(--accent);color:#111}
   .cardtools{position:absolute;right:1.5mm;bottom:1mm;display:none;gap:1mm;align-items:center;z-index:5}
   .card:hover .cardtools{display:flex}
   .cardtools button,.cardtools input{width:6mm;height:6mm;padding:0;border-radius:50%;border:.3mm solid #888;background:#fff;color:#222;font-size:3.4mm;line-height:1;cursor:pointer}
@@ -198,6 +199,10 @@
       <button id="aiBtn" title="Generar imágenes con IA (Pollinations)">✨ Generar con IA</button>
       <label class="btn" title="Pone la misma foto en todas las tarjetas (F)">Foto en todas<input type="file" id="allPhoto" accept="image/*" hidden></label>
     </div>
+    <div class="grp"><span class="gl">Filtros</span>
+      <select id="filterAll" title="Aplica un filtro a todas las fotos"><option value="">Filtro para todas…</option><option value="__none">Original (sin filtro)</option><option value="bw">Blanco y negro</option><option value="sepia">Sepia</option><option value="vintage">Vintage</option><option value="warm">Cálido</option><option value="cool">Frío</option><option value="vivid">Vívido</option><option value="fade">Desvanecido</option><option value="drama">Dramático</option><option value="noir">Noir</option></select>
+      <span class="info">Para una sola foto, pasa el mouse sobre ella y usa 🎨</span>
+    </div>
     <div class="grp"><span class="gl">Hoja</span>
       <button id="clear">Vaciar fotos</button>
       <span class="info" id="count"></span>
@@ -342,6 +347,19 @@ const TEMPLATES = {
 const MAXN = 30, MM = 96 / 25.4;
 let G = {};                          // geometría activa
 const slots = Array(MAXN).fill(null); // {img,url,fx,fy}
+// Filtros de foto: cadenas de filter de CSS, las mismas se aplican al canvas al exportar el PDF
+const FILTERS = {
+  bw:      {name:'Blanco y negro', css:'grayscale(1) contrast(1.1)'},
+  sepia:   {name:'Sepia',          css:'sepia(.85) contrast(1.05)'},
+  vintage: {name:'Vintage',        css:'sepia(.35) contrast(.9) brightness(1.1) saturate(1.3) hue-rotate(-10deg)'},
+  warm:    {name:'Cálido',         css:'sepia(.25) saturate(1.3) brightness(1.05) hue-rotate(-8deg)'},
+  cool:    {name:'Frío',           css:'saturate(1.1) brightness(1.05) hue-rotate(15deg) contrast(1.05)'},
+  vivid:   {name:'Vívido',         css:'saturate(1.6) contrast(1.15)'},
+  fade:    {name:'Desvanecido',    css:'contrast(.8) brightness(1.15) saturate(.8)'},
+  drama:   {name:'Dramático',      css:'contrast(1.4) brightness(.9) saturate(1.2)'},
+  noir:    {name:'Noir',           css:'grayscale(1) contrast(1.6) brightness(.9)'}
+};
+const fcss = k => (FILTERS[k] || {}).css || 'none';
 let photoEls = [], cardEls = [], replaceIdx = null, bgIdx = null;
 const bgs = Array.from({length: MAXN}, () => ({color: '#ffffff', img: null, url: null})); // fondo por tarjeta
 // Fondos predefinidos: se dibujan en canvas, no usan archivos externos
@@ -633,6 +651,22 @@ function showTplMenu(i, btn) {
   tplMenu.style.left = Math.max(4, Math.min(r.left, innerWidth - tplMenu.offsetWidth - 4)) + 'px';
   tplMenu.style.top = Math.max(4, Math.min(r.bottom + 4, innerHeight - tplMenu.offsetHeight - 4)) + 'px';
 }
+function showFltMenu(i, btn) {
+  tplMenu.innerHTML = '';
+  const add = (k, label) => {
+    const o = document.createElement('button'); o.textContent = label; o.className = (slots[i].flt || '') === k ? 'cur' : '';
+    o.onclick = () => { slots[i].flt = k; tplMenu.style.display = 'none'; render(); };
+    o.onmouseenter = () => { const im = photoEls[i].querySelector('img'); if (im) im.style.filter = fcss(k); };
+    tplMenu.appendChild(o);
+  };
+  add('', 'Original');
+  Object.entries(FILTERS).forEach(([k, f]) => add(k, f.name));
+  tplMenu.onmouseleave = () => { const im = photoEls[i] && photoEls[i].querySelector('img'); if (im && slots[i]) im.style.filter = fcss(slots[i].flt); };
+  tplMenu.style.display = 'flex';
+  const r = btn.getBoundingClientRect();
+  tplMenu.style.left = Math.max(4, Math.min(r.left, innerWidth - tplMenu.offsetWidth - 4)) + 'px';
+  tplMenu.style.top = Math.max(4, Math.min(r.bottom + 4, innerHeight - tplMenu.offsetHeight - 4)) + 'px';
+}
 document.addEventListener('click', e => { if (!tplMenu.contains(e.target)) tplMenu.style.display = 'none'; });
 
 function rebuild() {
@@ -694,7 +728,7 @@ function render() {
     if (!s) { p.textContent = '+'; return; }
     const img = document.createElement('img');
     img.src = s.url; img.draggable = false;
-    img.style.objectPosition = `${s.fx * 100}% ${s.fy * 100}%`;
+    img.style.objectPosition = `${s.fx * 100}% ${s.fy * 100}%`; img.style.filter = fcss(s.flt);
     enableDrag(img, s);
     p.appendChild(img);
     const t = document.createElement('div'); t.className = 'tools';
@@ -702,7 +736,9 @@ function render() {
     rep.onclick = () => { replaceIdx = i; single.click(); };
     const del = document.createElement('button'); del.textContent = '×'; del.title = 'Quitar';
     del.onclick = () => { URL.revokeObjectURL(s.url); slots[i] = null; render(); };
-    t.append(rep, del); p.appendChild(t);
+    const fb = document.createElement('button'); fb.textContent = '🎨'; fb.title = 'Filtro'; if (s.flt) fb.classList.add('own');
+    fb.onclick = e => { e.stopPropagation(); showFltMenu(i, fb); };
+    t.append(fb, rep, del); p.appendChild(t);
   });
   const used = slots.slice(0, G.n).filter(Boolean).length, extra = slots.filter(Boolean).length - used;
   $('count').textContent = `${used} / ${G.n}` + (extra > 0 ? ` (+${extra} ocultas)` : '');
@@ -730,7 +766,7 @@ function loadFile(file) {
   return new Promise(res => {
     if (!file.type.startsWith('image/')) return res(null);
     const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => res({img, url, fx: .5, fy: .5});
+    img.onload = () => res({img, url, fx: .5, fy: .5, flt: ''});
     img.onerror = () => res(null);
     img.src = url;
   });
@@ -809,6 +845,12 @@ function richSelect(sel, opts) {
   sel._sync = sync; sync();
 }
 richSelect($('presetAll'), {preview: k => { if (!k) return null; const d = document.createElement('div'); d.className = 'rth'; d.style.backgroundImage = `url(${presetThumb(k)})`; return d; }});
+$('filterAll').addEventListener('change', e => {
+  const k = e.target.value; if (!k) return; e.target.value = ''; e._sync();
+  slots.forEach(s => { if (s) s.flt = k === '__none' ? '' : k; });
+  render();
+});
+richSelect($('filterAll'), {preview: () => null});
 richSelect($('capFont'), {preview: () => null, font: k => FONTS[k], btnFont: k => FONTS[k]});
 $('applyAllImg').addEventListener('click', () => $('bgAllFile').click());
 $('bgAllFile').addEventListener('change', async e => {
@@ -896,6 +938,7 @@ $('export').addEventListener('click', async () => {
     const k = Math.max(W / iw, H / ih), sw = W / k, sh = H / k;
     const c2 = cv.getContext('2d');
     if (it.disc) { c2.beginPath(); c2.arc(W / 2, H / 2, W / 2, 0, 7); if (it.hole) c2.arc(W / 2, H / 2, it.hole * PPM / 2, 0, 7); c2.clip('evenodd'); } // disco: círculo con agujero
+    if (s.flt) c2.filter = fcss(s.flt);
     c2.drawImage(s.img, (iw - sw) * s.fx, (ih - sh) * s.fy, sw, sh, 0, 0, W, H);
     if (it.disc) doc.addImage(cv.toDataURL('image/png'), 'PNG', x + it.px, y + it.py, it.pw, it.ph);
     else doc.addImage(cv.toDataURL('image/jpeg', .93), 'JPEG', x + it.px, y + it.py, it.pw, it.ph);
@@ -931,7 +974,7 @@ $('allPhoto').addEventListener('change', async e => {
   const s = await loadFile(f); if (!s) return;
   for (let i = 0; i < G.n; i++) {
     if (slots[i]) URL.revokeObjectURL(slots[i].url);
-    slots[i] = {img: s.img, url: i ? URL.createObjectURL(f) : s.url, fx: .5, fy: .5};
+    slots[i] = {img: s.img, url: i ? URL.createObjectURL(f) : s.url, fx: .5, fy: .5, flt: ''};
   }
   render();
 });
@@ -1234,7 +1277,7 @@ rebuild();
     r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
   });
   const tx = async (store, mode, fn) => { const d = await idb; return new Promise((ok, no) => { const t = d.transaction(store, mode), r = fn(t.objectStore(store)); t.oncomplete = () => ok(r && r.result); t.onerror = () => no(t.error); }); };
-  const ctrls = () => [...document.querySelectorAll('#panel input[id], #panel select[id]')].filter(e => e.type !== 'file' && e.id !== 'presetAll' && e.id !== 'allText');
+  const ctrls = () => [...document.querySelectorAll('#panel input[id], #panel select[id]')].filter(e => e.type !== 'file' && e.id !== 'presetAll' && e.id !== 'filterAll' && e.id !== 'allText');
   const ids = new Map(), saved = new Set();       // url -> id de blob / ids ya guardados
   let ready = false, lastSig = '', saving = false, nextId = Date.now();
   const bid = async url => {
@@ -1244,7 +1287,7 @@ rebuild();
   const snapshot = () => ({
     v: 1, ctl: Object.fromEntries(ctrls().map(e => [e.id, e.type === 'checkbox' ? e.checked : e.value])),
     n: G.n, capts: capts.slice(), tk: tk.slice(), stickers: stickers.map(x => ({...x})),
-    slots: slots.map(x => x && {url: x.url, fx: x.fx, fy: x.fy}),
+    slots: slots.map(x => x && {url: x.url, fx: x.fx, fy: x.fy, flt: x.flt || ''}),
     bgs: bgs.map(b => ({color: b.color, url: b.url}))
   });
   async function save() {
@@ -1254,7 +1297,7 @@ rebuild();
     saving = true;
     try {
       const out = {...m, slots: [], bgs: []}, used = new Set();
-      for (const x of m.slots) { if (x) { const id = await bid(x.url); used.add(id); out.slots.push({id, fx: x.fx, fy: x.fy}); } else out.slots.push(null); }
+      for (const x of m.slots) { if (x) { const id = await bid(x.url); used.add(id); out.slots.push({id, fx: x.fx, fy: x.fy, flt: x.flt}); } else out.slots.push(null); }
       for (const b of m.bgs) { if (b.url) { const id = await bid(b.url); used.add(id); out.bgs.push({color: b.color, id}); } else out.bgs.push({color: b.color}); }
       await tx('kv', 'readwrite', st => st.put(out, 'state'));
       for (const id of [...saved]) if (!used.has(id)) { await tx('blobs', 'readwrite', st => st.delete(id)); saved.delete(id); }
@@ -1277,7 +1320,7 @@ rebuild();
     stickers.splice(0, stickers.length, ...st.stickers);
     for (let i = 0; i < MAXN; i++) {
       const x = st.slots[i];
-      if (x) { const blob = await tx('blobs', 'readonly', s => s.get(x.id)); if (blob) { const m = await mkImg(blob); slots[i] = {img: m.img, url: m.url, fx: x.fx, fy: x.fy}; ids.set(m.url, x.id); saved.add(x.id); } }
+      if (x) { const blob = await tx('blobs', 'readonly', s => s.get(x.id)); if (blob) { const m = await mkImg(blob); slots[i] = {img: m.img, url: m.url, fx: x.fx, fy: x.fy, flt: x.flt || ''}; ids.set(m.url, x.id); saved.add(x.id); } }
       const b = st.bgs[i];
       if (b) { bgs[i] = {color: b.color, img: null, url: null}; if (b.id) { const blob = await tx('blobs', 'readonly', s => s.get(b.id)); if (blob) { const m = await mkImg(blob); bgs[i].img = m.img; bgs[i].url = m.url; ids.set(m.url, b.id); saved.add(b.id); } } }
     }
@@ -1287,7 +1330,7 @@ rebuild();
   const urlData = async url => toData(await (await fetch(url)).blob());
   $('expBtn').addEventListener('click', async () => {
     const m = snapshot(), out = {...m, app: 'instantaneas', slots: [], bgs: []};
-    for (const x of m.slots) out.slots.push(x ? {data: await urlData(x.url), fx: x.fx, fy: x.fy} : null);
+    for (const x of m.slots) out.slots.push(x ? {data: await urlData(x.url), fx: x.fx, fy: x.fy, flt: x.flt} : null);
     for (const b of m.bgs) out.bgs.push(b.url ? {color: b.color, data: await urlData(b.url)} : {color: b.color});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(out)], {type: 'application/json'}));
@@ -1304,7 +1347,7 @@ rebuild();
       await tx('kv', 'readwrite', s => s.clear()); await tx('blobs', 'readwrite', s => s.clear());
       let n = 0; const put = async d => { const id = 'i' + (n++), bl = await (await fetch(d)).blob(); await tx('blobs', 'readwrite', s => s.put(bl, id)); return id; };
       const st = {...j, slots: [], bgs: []}; delete st.app;
-      for (const x of j.slots) st.slots.push(x ? {id: await put(x.data), fx: x.fx, fy: x.fy} : null);
+      for (const x of j.slots) st.slots.push(x ? {id: await put(x.data), fx: x.fx, fy: x.fy, flt: x.flt} : null);
       for (const b of j.bgs) st.bgs.push(b.data ? {color: b.color, id: await put(b.data)} : {color: b.color});
       await tx('kv', 'readwrite', s => s.put(st, 'state'));
       location.reload();
